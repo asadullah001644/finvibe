@@ -95,8 +95,9 @@ export default function AppShell({
       )}
       </AppShellActionsContext.Provider>
 
-      <AppBottomNav activeTab={activeTab} currentMonthKey={currentMonthKey} />
-      <QuickLogFAB customCategories={categoryNames} />
+      <QuickLogFAB customCategories={categoryNames}>
+        <AppBottomNav activeTab={activeTab} currentMonthKey={currentMonthKey} />
+      </QuickLogFAB>
     </main>
   );
 }

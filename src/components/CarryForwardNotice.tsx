@@ -30,7 +30,7 @@ export default function CarryForwardNotice({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
-          className="fixed inset-x-4 bottom-24 z-[150] mx-auto max-w-lg"
+          className="fixed inset-x-4 bottom-[5.75rem] z-[150] mx-auto max-w-lg sm:bottom-24"
         >
           <div className="flex items-center gap-3 rounded-xl border border-neonViolet/30 bg-card/95 px-4 py-3 shadow-[0_0_30px_rgba(139,92,246,0.15)] backdrop-blur-md">
             <button

@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Calendar, Banknote, FileText, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -8,11 +15,49 @@ import { saveExpenseAction } from "@/lib/actions";
 import { getCategoryGroups, resolveCategoryHint } from "@/lib/constants";
 import { getLocalTodayDateString } from "@/lib/expenseDate";
 
-interface QuickLogFABProps {
-  customCategories: string[];
+interface QuickLogContextValue {
+  open: () => void;
 }
 
-export default function QuickLogFAB({ customCategories }: QuickLogFABProps) {
+const QuickLogContext = createContext<QuickLogContextValue | null>(null);
+
+export function useQuickLog(): QuickLogContextValue {
+  const context = useContext(QuickLogContext);
+  if (!context) {
+    throw new Error("useQuickLog must be used within QuickLogFAB");
+  }
+  return context;
+}
+
+interface QuickLogFABProps {
+  customCategories: string[];
+  children?: ReactNode;
+}
+
+export function QuickLogNavButton() {
+  const { open } = useQuickLog();
+
+  return (
+    <motion.button
+      type="button"
+      aria-label="Quick log expense"
+      whileTap={{ scale: 0.92 }}
+      transition={{ type: "spring", stiffness: 500, damping: 28 }}
+      onClick={open}
+      className="relative -mt-6 flex h-14 w-14 items-center justify-center"
+    >
+      <span className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-neonEmerald/35" />
+      <span className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-neonEmerald bg-card text-neonEmerald shadow-[0_0_28px_rgba(16,185,129,0.45)]">
+        <Plus className="h-6 w-6" strokeWidth={2.25} />
+      </span>
+    </motion.button>
+  );
+}
+
+export default function QuickLogFAB({
+  customCategories,
+  children,
+}: QuickLogFABProps) {
   const categoryGroups = getCategoryGroups().map((group) => ({
     ...group,
     items: group.items.filter((item) => customCategories.includes(item)),
@@ -95,20 +140,8 @@ export default function QuickLogFAB({ customCategories }: QuickLogFABProps) {
   };
 
   return (
-    <>
-      <motion.button
-        type="button"
-        aria-label="Quick log expense"
-        whileTap={{ scale: 0.92 }}
-        transition={{ type: "spring", stiffness: 500, damping: 28 }}
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 left-1/2 z-40 flex h-14 w-14 -translate-x-1/2 items-center justify-center"
-      >
-        <span className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-neonEmerald/35" />
-        <span className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-neonEmerald bg-card text-neonEmerald shadow-[0_0_28px_rgba(16,185,129,0.45)]">
-          <Plus className="h-6 w-6" strokeWidth={2.25} />
-        </span>
-      </motion.button>
+    <QuickLogContext.Provider value={{ open: () => setIsOpen(true) }}>
+      {children}
 
       <AnimatePresence>
         {isOpen && (
@@ -267,6 +300,6 @@ export default function QuickLogFAB({ customCategories }: QuickLogFABProps) {
           </>
         )}
       </AnimatePresence>
-    </>
+    </QuickLogContext.Provider>
   );
 }
