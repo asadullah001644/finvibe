@@ -1,9 +1,11 @@
 "use client";
 
 import { format } from "date-fns";
-import { Pencil, Trash2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Filter, Pencil, Trash2, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   deleteExpenseAction,
   updateExpenseAction,
@@ -13,6 +15,7 @@ import {
   getCategoryGroups,
   getChildCategoryName,
   getParentCategoryName,
+  resolveCategoryHint,
 } from "@/lib/constants";
 import { formatCurrency, formatCurrencyPrecise } from "@/lib/currency";
 import { buildCategoriesUrl } from "@/lib/navigation";
@@ -210,6 +213,209 @@ function ExpenseEditForm({
   );
 }
 
+interface CategoryFilterModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  categoryNames: string[];
+  activeGroup: CategoryFilterGroup;
+  activeCategory: string | null;
+  onGroupChange: (group: CategoryFilterGroup) => void;
+  onCategoryChange: (category: string | null) => void;
+}
+
+function CategoryFilterModal({
+  isOpen,
+  onClose,
+  categoryNames,
+  activeGroup,
+  activeCategory,
+  onGroupChange,
+  onCategoryChange,
+}: CategoryFilterModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  const categoryGroups = useMemo(
+    () =>
+      getCategoryGroups()
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((name) => categoryNames.includes(name)),
+        }))
+        .filter((group) => group.items.length > 0),
+    [categoryNames],
+  );
+
+  const modal = (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.button
+            type="button"
+            aria-label="Close category filters"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md"
+          />
+
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="category-filter-title"
+            initial={{ opacity: 0, scale: 0.95, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 16 }}
+            className="fixed left-1/2 top-1/2 z-[201] flex max-h-[min(90vh,640px)] w-[min(calc(100vw-2rem),28rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-cardBorder bg-card shadow-[0_0_60px_rgba(139,92,246,0.2)]"
+          >
+            <div className="shrink-0 border-b border-cardBorder px-5 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonViolet/80">
+                    Filter expenses
+                  </p>
+                  <h2
+                    id="category-filter-title"
+                    className="mt-2 text-lg font-semibold text-zinc-100"
+                  >
+                    Category
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close"
+                  onClick={onClose}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-cardBorder bg-background text-zinc-400 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+                Group
+              </p>
+              <div className="mb-5 flex flex-wrap gap-2">
+                {GROUP_FILTERS.map((filter) => {
+                  const isActive = activeGroup === filter.id && !activeCategory;
+
+                  return (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      onClick={() => {
+                        onGroupChange(filter.id);
+                        onClose();
+                      }}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                        isActive
+                          ? "border-neonViolet bg-neonViolet/15 text-neonViolet"
+                          : "border-cardBorder bg-background text-zinc-400 hover:border-neonViolet/40 hover:text-zinc-200"
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+                Specific category
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onCategoryChange(null);
+                  onClose();
+                }}
+                className={`mb-3 w-full rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                  !activeCategory
+                    ? "border-neonEmerald/40 bg-neonEmerald/10 text-neonEmerald"
+                    : "border-cardBorder bg-background text-zinc-300 hover:border-neonEmerald/30"
+                }`}
+              >
+                All in current group
+              </button>
+
+              <div className="space-y-4">
+                {categoryGroups.map((group) => (
+                  <div key={group.label ?? group.items[0]}>
+                    {group.label && (
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-neonViolet/80">
+                        {group.label}
+                      </p>
+                    )}
+                    <div className="space-y-1">
+                      {group.items.map((name) => {
+                        const isActive = activeCategory === name;
+                        const hint = resolveCategoryHint(name);
+
+                        return (
+                          <button
+                            key={name}
+                            type="button"
+                            onClick={() => {
+                              onCategoryChange(name);
+                              onClose();
+                            }}
+                            className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                              isActive
+                                ? "border-neonEmerald/40 bg-neonEmerald/10"
+                                : "border-cardBorder bg-background/60 hover:border-neonViolet/30"
+                            }`}
+                          >
+                            <span
+                              className={`block text-sm font-medium ${
+                                isActive ? "text-neonEmerald" : "text-zinc-200"
+                              }`}
+                            >
+                              {group.label
+                                ? getChildCategoryName(name)
+                                : name}
+                            </span>
+                            {hint && (
+                              <span className="mt-0.5 block text-xs text-zinc-500">
+                                {hint}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(modal, document.body);
+}
+
 export default function CategoryExplorer({
   monthKey,
   expenses,
@@ -224,20 +430,7 @@ export default function CategoryExplorer({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  const leafOptions = useMemo(() => {
-    if (activeGroup === "all") {
-      return categoryNames;
-    }
-
-    if (activeGroup === "General") {
-      return categoryNames.filter((name) => !name.includes(CATEGORY_SEPARATOR));
-    }
-
-    return categoryNames.filter((name) =>
-      name.startsWith(`${activeGroup}${CATEGORY_SEPARATOR}`),
-    );
-  }, [activeGroup, categoryNames]);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const filteredExpenses = useMemo(() => {
     const resolvedGroup =
@@ -316,77 +509,36 @@ export default function CategoryExplorer({
 
   return (
     <section className="rounded-2xl border border-cardBorder bg-card/60 p-4 sm:p-5">
-      <div className="mb-4">
-        <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonViolet/80">
-          Category Explorer
-        </p>
-        <p className="mt-1 text-sm text-zinc-500">
-          Filter and browse expenses by Home, Flat, or individual category
-        </p>
-      </div>
-
-      <div className="mb-4 flex flex-wrap gap-2">
-        {GROUP_FILTERS.map((filter) => {
-          const isActive = activeGroup === filter.id && !activeCategory;
-
-          return (
-            <button
-              key={filter.id}
-              type="button"
-              onClick={() => handleGroupChange(filter.id)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                isActive
-                  ? "border-neonViolet bg-neonViolet/15 text-neonViolet"
-                  : "border-cardBorder bg-background text-zinc-400 hover:border-neonViolet/40 hover:text-zinc-200"
-              }`}
-            >
-              {filter.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {leafOptions.length > 0 && (
-        <div className="mb-5 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => handleCategoryChange(null)}
-            className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
-              !activeCategory
-                ? "border-neonEmerald/40 bg-neonEmerald/10 text-neonEmerald"
-                : "border-cardBorder bg-background text-zinc-500 hover:text-zinc-300"
-            }`}
-          >
-            All in group
-          </button>
-          {leafOptions.map((name) => {
-            const isActive = activeCategory === name;
-
-            return (
-              <button
-                key={name}
-                type="button"
-                onClick={() => handleCategoryChange(name)}
-                className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
-                  isActive
-                    ? "border-neonEmerald/40 bg-neonEmerald/10 text-neonEmerald"
-                    : "border-cardBorder bg-background text-zinc-500 hover:text-zinc-300"
-                }`}
-              >
-                {getChildCategoryName(name)}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      <div className="mb-5 grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-cardBorder bg-background/60 px-3 py-3">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-            Filter
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonViolet/80">
+            Category Explorer
           </p>
-          <p className="mt-1 text-sm font-medium text-zinc-200">{filterLabel}</p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Browse and manage expenses by category
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setFilterOpen(true)}
+          className="inline-flex items-center gap-2 rounded-xl border border-neonViolet/30 bg-neonViolet/10 px-3 py-2 text-xs font-medium text-neonViolet transition-colors hover:bg-neonViolet/20"
+        >
+          <Filter className="h-3.5 w-3.5" />
+          {filterLabel}
+        </button>
+      </div>
+
+      <CategoryFilterModal
+        isOpen={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        categoryNames={categoryNames}
+        activeGroup={activeGroup}
+        activeCategory={activeCategory}
+        onGroupChange={handleGroupChange}
+        onCategoryChange={handleCategoryChange}
+      />
+
+      <div className="mb-5 grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-cardBorder bg-background/60 px-3 py-3">
           <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
             Total spent

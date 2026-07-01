@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import CategoryExplorer from "@/components/CategoryExplorer";
-import CategoryTracker from "@/components/CategoryTracker";
+import CategorySpendingSnapshot from "@/components/CategorySpendingSnapshot";
 import { useAppShellActions } from "@/components/AppShell";
 import { buildCategoriesUrl } from "@/lib/navigation";
 import type { BudgetCategory } from "@/lib/types";
@@ -38,8 +38,8 @@ export default function CategoriesContent({
   }));
 
   return (
-    <>
-      <CategoryTracker
+    <div className="space-y-4">
+      <CategorySpendingSnapshot
         categories={budget.categories}
         expenses={auditExpenses}
         onOpenCategories={openCategories}
@@ -53,6 +53,6 @@ export default function CategoriesContent({
         expenses={expenses}
         categoryNames={categoryNames}
       />
-    </>
+    </div>
   );
 }

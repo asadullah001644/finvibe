@@ -91,6 +91,7 @@ export function buildGroupedCategoryRows(
 
   const knownNames = new Set(categories.map((category) => category.name));
   const groups: CategoryGroupRow[] = [];
+  const generalItems: CategoryRow[] = [];
 
   for (const group of getCategoryGroups()) {
     const items = sortRowsBySpend(
@@ -113,7 +114,7 @@ export function buildGroupedCategoryRows(
     }
 
     if (!group.label) {
-      groups.push({ label: null, items });
+      generalItems.push(...items);
       continue;
     }
 
@@ -130,6 +131,24 @@ export function buildGroupedCategoryRows(
         group.label,
         { [group.label]: rollupSpent },
         { [group.label]: rollupAllocated },
+        totalSpent,
+      ),
+      items,
+    });
+  }
+
+  if (generalItems.length > 0) {
+    const items = sortRowsBySpend(generalItems);
+    const rollupSpent = items.reduce((sum, row) => sum + row.spent, 0);
+    const rollupAllocated = items.reduce((sum, row) => sum + row.allocated, 0);
+
+    groups.push({
+      label: "General",
+      rollup: buildCategoryRow(
+        "General",
+        "General",
+        { General: rollupSpent },
+        { General: rollupAllocated },
         totalSpent,
       ),
       items,
@@ -162,6 +181,57 @@ export function buildGroupedCategoryRows(
 
 export function flattenCategoryRows(groups: CategoryGroupRow[]): CategoryRow[] {
   return groups.flatMap((group) => group.items);
+}
+
+function recalculateRollup(
+  label: string,
+  items: CategoryRow[],
+  totalSpent: number,
+): CategoryRow {
+  const rollupSpent = items.reduce((sum, row) => sum + row.spent, 0);
+  const rollupAllocated = items.reduce((sum, row) => sum + row.allocated, 0);
+
+  return buildCategoryRow(
+    label,
+    label,
+    { [label]: rollupSpent },
+    { [label]: rollupAllocated },
+    totalSpent,
+  );
+}
+
+export function filterCategoryGroups(
+  groups: CategoryGroupRow[],
+  totalSpent: number,
+  options: { showEmptyBudgets: boolean },
+): CategoryGroupRow[] {
+  return groups
+    .map((group) => {
+      const items = group.items.filter((row) =>
+        options.showEmptyBudgets
+          ? row.spent > 0 || row.allocated > 0
+          : row.spent > 0 || row.isOver,
+      );
+
+      if (items.length === 0) {
+        return null;
+      }
+
+      if (group.label && group.rollup) {
+        return {
+          label: group.label,
+          rollup: recalculateRollup(group.label, items, totalSpent),
+          items,
+        };
+      }
+
+      return { ...group, items };
+    })
+    .filter((group): group is CategoryGroupRow => group !== null);
+}
+
+export function countActiveCategories(groups: CategoryGroupRow[]): number {
+  return flattenCategoryRows(groups).filter((row) => row.spent > 0).length;
 }
 
 export function getOverviewCategoryHighlights(
