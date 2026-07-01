@@ -15,6 +15,10 @@ import {
   deleteExpenseAction,
   updateExpenseAction,
 } from "@/lib/actions";
+import {
+  getCategoryGroups,
+  getChildCategoryName,
+} from "@/lib/constants";
 import { formatCurrencyPrecise } from "@/lib/currency";
 import { monthKeyToDate } from "@/lib/month";
 
@@ -151,6 +155,12 @@ function ExpenseEditForm({
   onCancel,
   onSaved,
 }: ExpenseEditFormProps) {
+  const categoryGroups = getCategoryGroups()
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((name) => categoryNames.includes(name)),
+    }))
+    .filter((group) => group.items.length > 0);
   const [amount, setAmount] = useState(String(item.amount));
   const [category, setCategory] = useState(item.category);
   const [description, setDescription] = useState(item.description);
@@ -216,11 +226,23 @@ function ExpenseEditForm({
         onChange={(event) => setCategory(event.target.value)}
         className="w-full rounded-lg border border-cardBorder bg-background px-3 py-2 text-sm text-zinc-100 outline-none focus:border-neonViolet"
       >
-        {categoryNames.map((name) => (
-          <option key={name} value={name}>
-            {name}
-          </option>
-        ))}
+        {categoryGroups.map((group) =>
+          group.label ? (
+            <optgroup key={group.label} label={group.label}>
+              {group.items.map((name) => (
+                <option key={name} value={name}>
+                  {getChildCategoryName(name)}
+                </option>
+              ))}
+            </optgroup>
+          ) : (
+            group.items.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))
+          ),
+        )}
       </select>
       <input
         type="text"

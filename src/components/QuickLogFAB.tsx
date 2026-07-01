@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Calendar, Banknote, FileText, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { saveExpenseAction } from "@/lib/actions";
-import { CATEGORY_HINTS } from "@/lib/constants";
+import { getCategoryGroups, resolveCategoryHint } from "@/lib/constants";
 import { getLocalTodayDateString } from "@/lib/expenseDate";
 
 interface QuickLogFABProps {
@@ -13,6 +13,10 @@ interface QuickLogFABProps {
 }
 
 export default function QuickLogFAB({ customCategories }: QuickLogFABProps) {
+  const categoryGroups = getCategoryGroups().map((group) => ({
+    ...group,
+    items: group.items.filter((item) => customCategories.includes(item)),
+  })).filter((group) => group.items.length > 0);
   const router = useRouter();
   const amountRef = useRef<HTMLInputElement>(null);
 
@@ -173,31 +177,45 @@ export default function QuickLogFAB({ customCategories }: QuickLogFABProps) {
 
                 <div>
                   <p className="mb-3 text-sm font-medium text-zinc-300">Category</p>
-                  <div className="max-h-48 overflow-y-auto rounded-2xl border border-cardBorder/60 p-2">
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {customCategories.map((item) => {
-                        const isSelected = category === item;
+                  <div className="max-h-56 overflow-y-auto rounded-2xl border border-cardBorder/60 p-2">
+                    <div className="space-y-3">
+                      {categoryGroups.map((group) => (
+                        <div key={group.label ?? group.items[0]}>
+                          {group.label && (
+                            <p className="sticky top-0 z-10 mb-2 bg-background/95 px-1 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-neonViolet/80">
+                              {group.label}
+                            </p>
+                          )}
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                            {group.items.map((item) => {
+                              const isSelected = category === item;
+                              const displayName = group.label
+                                ? item.split(" › ").slice(1).join(" › ")
+                                : item;
 
-                        return (
-                          <button
-                            key={item}
-                            type="button"
-                            onClick={() => setCategory(item)}
-                            className={`min-h-14 rounded-xl border px-2 py-3 text-xs font-medium transition-colors sm:text-sm ${
-                              isSelected
-                                ? "border-neonViolet bg-card text-neonViolet shadow-[0_0_20px_rgba(139,92,246,0.18)]"
-                                : "border-cardBorder bg-card text-zinc-200 hover:border-neonViolet"
-                            }`}
-                          >
-                            {item}
-                          </button>
-                        );
-                      })}
+                              return (
+                                <button
+                                  key={item}
+                                  type="button"
+                                  onClick={() => setCategory(item)}
+                                  className={`min-h-14 rounded-xl border px-2 py-3 text-xs font-medium transition-colors sm:text-sm ${
+                                    isSelected
+                                      ? "border-neonViolet bg-card text-neonViolet shadow-[0_0_20px_rgba(139,92,246,0.18)]"
+                                      : "border-cardBorder bg-card text-zinc-200 hover:border-neonViolet"
+                                  }`}
+                                >
+                                  {displayName}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  {category && CATEGORY_HINTS[category] && (
+                  {category && resolveCategoryHint(category) && (
                     <p className="mt-2 text-xs text-zinc-500">
-                      {CATEGORY_HINTS[category]}
+                      {resolveCategoryHint(category)}
                     </p>
                   )}
                 </div>

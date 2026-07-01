@@ -3,6 +3,11 @@ export interface BudgetCategory {
   allocated: number;
 }
 
+export interface CategoryGroup {
+  label: string | null;
+  items: string[];
+}
+
 export interface Budget {
   monthKey: string;
   totalSalary: number;

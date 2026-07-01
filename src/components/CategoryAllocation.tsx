@@ -7,8 +7,10 @@ import { LayoutList, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { saveCategoryAllocationsAction } from "@/lib/actions";
 import {
-  CATEGORY_HINTS,
   distributeCategoryBudgets,
+  getCategoryGroups,
+  getChildCategoryName,
+  resolveCategoryHint,
 } from "@/lib/constants";
 import { formatCurrency } from "@/lib/currency";
 import type { BudgetCategory } from "@/lib/types";
@@ -79,15 +81,17 @@ export default function CategoryAllocation({
     };
   }, [isOpen]);
 
-  const handleCategoryChange = (index: number, allocated: string) => {
+  const handleCategoryChange = (name: string, allocated: string) => {
     setCategoryRows((rows) =>
-      rows.map((row, rowIndex) =>
-        rowIndex === index
+      rows.map((row) =>
+        row.name === name
           ? { ...row, allocated: Number.parseFloat(allocated) || 0 }
           : row,
       ),
     );
   };
+
+  const categoryGroups = getCategoryGroups();
 
   const handleSuggestSplit = () => {
     if (spendable <= 0) {
@@ -198,35 +202,66 @@ export default function CategoryAllocation({
                 </button>
               </div>
 
-              <div className="space-y-2">
-                {categoryRows.map((category, index) => (
-                  <div
-                    key={category.name}
-                    className="flex items-center gap-3 rounded-xl border border-cardBorder bg-background/60 px-3 py-2"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <span className="block text-sm text-zinc-300">
-                        {category.name}
-                      </span>
-                      {CATEGORY_HINTS[category.name] && (
-                        <span className="mt-0.5 block text-[11px] text-zinc-500">
-                          {CATEGORY_HINTS[category.name]}
-                        </span>
+              <div className="space-y-4">
+                {categoryGroups.map((group) => {
+                  const groupRows = group.items
+                    .map((name) =>
+                      categoryRows.find((category) => category.name === name),
+                    )
+                    .filter(
+                      (category): category is BudgetCategory =>
+                        category !== undefined,
+                    );
+
+                  if (groupRows.length === 0) {
+                    return null;
+                  }
+
+                  return (
+                    <div key={group.label ?? group.items[0]} className="space-y-2">
+                      {group.label && (
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-neonViolet/80">
+                          {group.label}
+                        </p>
                       )}
+                      {groupRows.map((category) => (
+                        <div
+                          key={category.name}
+                          className={`flex items-center gap-3 rounded-xl border border-cardBorder bg-background/60 px-3 py-2 ${
+                            group.label ? "ml-3" : ""
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <span className="block text-sm text-zinc-300">
+                              {group.label
+                                ? getChildCategoryName(category.name)
+                                : category.name}
+                            </span>
+                            {resolveCategoryHint(category.name) && (
+                              <span className="mt-0.5 block text-[11px] text-zinc-500">
+                                {resolveCategoryHint(category.name)}
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={category.allocated || ""}
+                            onChange={(event) =>
+                              handleCategoryChange(
+                                category.name,
+                                event.target.value,
+                              )
+                            }
+                            placeholder="0"
+                            className="w-28 rounded-lg border border-cardBorder bg-card px-3 py-2 text-right text-sm text-zinc-100 outline-none focus:border-neonViolet"
+                          />
+                        </div>
+                      ))}
                     </div>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={category.allocated || ""}
-                      onChange={(event) =>
-                        handleCategoryChange(index, event.target.value)
-                      }
-                      placeholder="0"
-                      className="w-28 rounded-lg border border-cardBorder bg-card px-3 py-2 text-right text-sm text-zinc-100 outline-none focus:border-neonViolet"
-                    />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {error && <p className="mt-4 text-sm text-neonCrimson">{error}</p>}

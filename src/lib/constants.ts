@@ -1,27 +1,119 @@
-import type { BudgetCategory } from "@/lib/types";
+import type { BudgetCategory, CategoryGroup } from "@/lib/types";
 
-export const DEFAULT_CATEGORIES: BudgetCategory[] = [
-  { name: "Kids", allocated: 0 },
-  { name: "Wife & Family", allocated: 0 },
-  { name: "Groceries", allocated: 0 },
-  { name: "Food", allocated: 0 },
-  { name: "Home & Bills", allocated: 0 },
-  { name: "Utilities", allocated: 0 },
-  { name: "Fuel", allocated: 0 },
-  { name: "Transport", allocated: 0 },
-  { name: "Shopping", allocated: 0 },
-  { name: "Personal", allocated: 0 },
-  { name: "Entertainment", allocated: 0 },
-  { name: "Other", allocated: 0 },
+export type CategoryNode = {
+  name: string;
+  children?: CategoryNode[];
+};
+
+export const CATEGORY_SEPARATOR = " › ";
+
+export const CATEGORY_TREE: CategoryNode[] = [
+  {
+    name: "Home",
+    children: [
+      { name: "Kids" },
+      { name: "Wife" },
+      { name: "Family" },
+      { name: "Groceries" },
+      { name: "Bills" },
+      { name: "Utilities" },
+    ],
+  },
+  {
+    name: "Flat",
+    children: [
+      { name: "Rent" },
+      { name: "Grocery" },
+      { name: "Utilities" },
+    ],
+  },
+  { name: "Food" },
+  { name: "Fuel" },
+  { name: "Transport" },
+  { name: "Shopping" },
+  { name: "Personal" },
+  { name: "Entertainment" },
+  { name: "Other" },
 ];
 
+export function formatCategoryPath(parent: string, child: string): string {
+  return `${parent}${CATEGORY_SEPARATOR}${child}`;
+}
+
+export function flattenCategoryLeaves(): BudgetCategory[] {
+  const leaves: BudgetCategory[] = [];
+
+  for (const node of CATEGORY_TREE) {
+    if (node.children?.length) {
+      for (const child of node.children) {
+        leaves.push({
+          name: formatCategoryPath(node.name, child.name),
+          allocated: 0,
+        });
+      }
+      continue;
+    }
+
+    leaves.push({ name: node.name, allocated: 0 });
+  }
+
+  return leaves;
+}
+
+export const DEFAULT_CATEGORIES: BudgetCategory[] = flattenCategoryLeaves();
+
+export function getCategoryGroups(): CategoryGroup[] {
+  const groups: CategoryGroup[] = [];
+
+  for (const node of CATEGORY_TREE) {
+    if (node.children?.length) {
+      groups.push({
+        label: node.name,
+        items: node.children.map((child) =>
+          formatCategoryPath(node.name, child.name),
+        ),
+      });
+      continue;
+    }
+
+    groups.push({
+      label: null,
+      items: [node.name],
+    });
+  }
+
+  return groups;
+}
+
+export function getParentCategoryName(categoryName: string): string | null {
+  const separatorIndex = categoryName.indexOf(CATEGORY_SEPARATOR);
+  if (separatorIndex === -1) {
+    return null;
+  }
+
+  return categoryName.slice(0, separatorIndex);
+}
+
+export function getChildCategoryName(categoryName: string): string {
+  const separatorIndex = categoryName.indexOf(CATEGORY_SEPARATOR);
+  if (separatorIndex === -1) {
+    return categoryName;
+  }
+
+  return categoryName.slice(separatorIndex + CATEGORY_SEPARATOR.length);
+}
+
 export const CATEGORY_HINTS: Record<string, string> = {
-  Kids: "Pampers, milk, formula, baby care",
-  "Wife & Family": "Wife's needs, family gifts",
-  Groceries: "Rashan, home kitchen stock",
+  "Home › Kids": "Pampers, milk, formula, baby care",
+  "Home › Wife": "Wife's needs, personal care, gifts",
+  "Home › Family": "Family gifts, visits, shared expenses",
+  "Home › Groceries": "Rashan, home kitchen stock",
+  "Home › Bills": "Home rent, maintenance, furniture",
+  "Home › Utilities": "Home electricity, gas, water, internet",
+  "Flat › Rent": "Flat or hostel rent",
+  "Flat › Grocery": "Flat rashan, kitchen stock",
+  "Flat › Utilities": "Flat electricity, gas, water, internet",
   Food: "Meals, takeout, tea outside home",
-  "Home & Bills": "Rent, maintenance, furniture",
-  Utilities: "Electricity, gas, water, internet",
   Fuel: "Petrol for car or bike",
   Transport: "Ride-hailing, bus, parking",
   Shopping: "Clothes, electronics, general buys",
@@ -30,30 +122,76 @@ export const CATEGORY_HINTS: Record<string, string> = {
   Other: "Anything that does not fit above",
 };
 
+export function resolveCategoryHint(name: string): string | undefined {
+  return CATEGORY_HINTS[name];
+}
+
 export const CATEGORY_BUDGET_WEIGHTS: Record<string, number> = {
-  Kids: 0.14,
-  "Wife & Family": 0.06,
-  Groceries: 0.16,
-  Food: 0.08,
-  "Home & Bills": 0.18,
-  Utilities: 0.08,
-  Fuel: 0.06,
-  Transport: 0.04,
-  Shopping: 0.06,
-  Personal: 0.05,
-  Entertainment: 0.04,
-  Other: 0.05,
+  "Home › Kids": 0.12,
+  "Home › Wife": 0.03,
+  "Home › Family": 0.03,
+  "Home › Groceries": 0.13,
+  "Home › Bills": 0.15,
+  "Home › Utilities": 0.07,
+  "Flat › Rent": 0.1,
+  "Flat › Grocery": 0.05,
+  "Flat › Utilities": 0.035,
+  Food: 0.07,
+  Fuel: 0.05,
+  Transport: 0.035,
+  Shopping: 0.05,
+  Personal: 0.04,
+  Entertainment: 0.03,
+  Other: 0.035,
 };
+
+const LEGACY_CATEGORY_ALIASES: Record<string, string> = {
+  Kids: "Home › Kids",
+  "Wife & Family": "Home › Family",
+  Groceries: "Home › Groceries",
+  "Home & Bills": "Home › Bills",
+  Utilities: "Home › Utilities",
+};
+
+function remapStoredCategories(
+  stored: BudgetCategory[] | null | undefined,
+): Map<string, number> {
+  const remapped = new Map<string, number>();
+
+  for (const category of Array.isArray(stored) ? stored : []) {
+    const allocated = Number(category.allocated ?? 0);
+    if (allocated <= 0) {
+      continue;
+    }
+
+    if (category.name === "Wife & Family") {
+      const half = allocated / 2;
+      remapped.set(
+        "Home › Wife",
+        (remapped.get("Home › Wife") ?? 0) + half,
+      );
+      remapped.set(
+        "Home › Family",
+        (remapped.get("Home › Family") ?? 0) + half,
+      );
+      continue;
+    }
+
+    const mappedName =
+      LEGACY_CATEGORY_ALIASES[category.name] ?? category.name;
+    remapped.set(
+      mappedName,
+      (remapped.get(mappedName) ?? 0) + allocated,
+    );
+  }
+
+  return remapped;
+}
 
 export function mergeWithDefaultCategories(
   stored: BudgetCategory[] | null | undefined,
 ): BudgetCategory[] {
-  const storedMap = new Map(
-    (Array.isArray(stored) ? stored : []).map((category) => [
-      category.name,
-      category.allocated,
-    ]),
-  );
+  const storedMap = remapStoredCategories(stored);
 
   return DEFAULT_CATEGORIES.map((category) => ({
     name: category.name,
