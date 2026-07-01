@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Wallet, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { saveIncomeAction } from "@/lib/actions";
+import { getPriorMonthBudgetAction, saveIncomeAction } from "@/lib/actions";
+import { formatMonthLabel } from "@/lib/month";
 import { formatCurrency } from "@/lib/currency";
 
 interface IncomeSettingsProps {
@@ -13,9 +14,14 @@ interface IncomeSettingsProps {
   monthLabel: string;
   totalSalary: number;
   savingsGoal: number;
+  carriedFromMonthLabel?: string;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   showTrigger?: boolean;
+}
+
+function hasIncomeValues(totalSalary: number, savingsGoal: number): boolean {
+  return totalSalary > 0 || savingsGoal > 0;
 }
 
 export default function IncomeSettings({
@@ -23,6 +29,7 @@ export default function IncomeSettings({
   monthLabel,
   totalSalary,
   savingsGoal,
+  carriedFromMonthLabel,
   isOpen: controlledOpen,
   onOpenChange,
   showTrigger = true,
@@ -42,8 +49,11 @@ export default function IncomeSettings({
 
   const [salary, setSalary] = useState(String(totalSalary || ""));
   const [goal, setGoal] = useState(String(savingsGoal || ""));
+  const [prefillLabel, setPrefillLabel] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const carryForwardLabel = carriedFromMonthLabel ?? prefillLabel;
 
   useEffect(() => {
     setMounted(true);
@@ -54,10 +64,41 @@ export default function IncomeSettings({
       return;
     }
 
-    setSalary(String(totalSalary || ""));
-    setGoal(String(savingsGoal || ""));
-    setError(null);
-  }, [totalSalary, savingsGoal, isOpen]);
+    let cancelled = false;
+
+    const syncForm = async () => {
+      setError(null);
+      setPrefillLabel(null);
+
+      if (hasIncomeValues(totalSalary, savingsGoal)) {
+        setSalary(String(totalSalary));
+        setGoal(String(savingsGoal));
+        return;
+      }
+
+      const prior = await getPriorMonthBudgetAction(monthKey);
+
+      if (cancelled) {
+        return;
+      }
+
+      if (prior && hasIncomeValues(prior.totalSalary, prior.savingsGoal)) {
+        setSalary(String(prior.totalSalary));
+        setGoal(String(prior.savingsGoal));
+        setPrefillLabel(formatMonthLabel(prior.monthKey));
+        return;
+      }
+
+      setSalary("");
+      setGoal("");
+    };
+
+    void syncForm();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [totalSalary, savingsGoal, isOpen, monthKey]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -164,6 +205,16 @@ export default function IncomeSettings({
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
+              {carryForwardLabel && (
+                <p className="rounded-xl border border-neonViolet/25 bg-neonViolet/10 px-4 py-3 text-sm text-zinc-300">
+                  Carried forward from{" "}
+                  <span className="font-medium text-neonViolet">
+                    {carryForwardLabel}
+                  </span>
+                  . Review and save, or edit as needed.
+                </p>
+              )}
+
               <label className="block">
                 <span className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
                   Monthly Salary

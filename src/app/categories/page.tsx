@@ -19,7 +19,7 @@ export default async function CategoriesPage({
     return <AuthGate locked>{null}</AuthGate>;
   }
 
-  const { monthKey, monthLabel, budget, expenses } = pageData;
+  const { monthKey, monthLabel, budget, expenses, carriedFromMonthLabel } = pageData;
 
   return (
     <AuthGate locked={false}>
@@ -27,6 +27,7 @@ export default async function CategoriesPage({
         activeTab="categories"
         currentMonthKey={monthKey}
         monthLabel={monthLabel}
+        carriedFromMonthLabel={carriedFromMonthLabel}
         budget={budget}
       >
         <ClientSuspense>

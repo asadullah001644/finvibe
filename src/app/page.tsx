@@ -16,7 +16,7 @@ export default async function OverviewPage({ searchParams }: OverviewPageProps) 
     return <AuthGate locked>{null}</AuthGate>;
   }
 
-  const { monthKey, monthLabel, budget, expenses } = pageData;
+  const { monthKey, monthLabel, budget, expenses, carriedFromMonthLabel } = pageData;
 
   return (
     <AuthGate locked={false}>
@@ -24,6 +24,7 @@ export default async function OverviewPage({ searchParams }: OverviewPageProps) 
         activeTab="overview"
         currentMonthKey={monthKey}
         monthLabel={monthLabel}
+        carriedFromMonthLabel={carriedFromMonthLabel}
         budget={budget}
       >
         <OverviewContent

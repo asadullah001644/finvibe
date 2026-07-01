@@ -1,16 +1,20 @@
 "use client";
 
-import { Cpu, Shield } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRef } from "react";
+import { Calendar, Cpu, Shield } from "lucide-react";
+import { usePathname } from "next/navigation";
 import CategoryAllocation from "@/components/CategoryAllocation";
 import IncomeSettings from "@/components/IncomeSettings";
 import LockButton from "@/components/LockButton";
+import { useAppNavigation } from "@/components/NavigationLoadingProvider";
+import RecurringExpensesSettings from "@/components/RecurringExpensesSettings";
 import { buildMonthUrl } from "@/lib/navigation";
 import type { BudgetCategory } from "@/lib/types";
 
 interface AppHeaderProps {
   currentMonthKey: string;
   monthLabel: string;
+  carriedFromMonthLabel?: string;
   budget: {
     totalSalary: number;
     savingsGoal: number;
@@ -19,27 +23,43 @@ interface AppHeaderProps {
   hasLimitsSet: boolean;
   incomeOpen: boolean;
   categoriesOpen: boolean;
+  recurringOpen: boolean;
   onIncomeOpenChange: (open: boolean) => void;
   onCategoriesOpenChange: (open: boolean) => void;
+  onRecurringOpenChange: (open: boolean) => void;
 }
 
 export default function AppHeader({
   currentMonthKey,
   monthLabel,
+  carriedFromMonthLabel,
   budget,
   hasLimitsSet,
   incomeOpen,
   categoriesOpen,
+  recurringOpen,
   onIncomeOpenChange,
   onCategoriesOpenChange,
+  onRecurringOpenChange,
 }: AppHeaderProps) {
-  const router = useRouter();
+  const { navigate } = useAppNavigation();
   const pathname = usePathname();
+  const monthInputRef = useRef<HTMLInputElement>(null);
 
   const handleMonthChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     if (value) {
-      router.push(buildMonthUrl(pathname, value));
+      navigate(buildMonthUrl(pathname, value));
+    }
+  };
+
+  const handleMonthFieldClick = (
+    event: React.MouseEvent<HTMLLabelElement>,
+  ) => {
+    const input = monthInputRef.current;
+    if (input && typeof input.showPicker === "function") {
+      event.preventDefault();
+      input.showPicker();
     }
   };
 
@@ -67,6 +87,7 @@ export default function AppHeader({
             monthLabel={monthLabel}
             totalSalary={budget.totalSalary}
             savingsGoal={budget.savingsGoal}
+            carriedFromMonthLabel={carriedFromMonthLabel}
             isOpen={incomeOpen}
             onOpenChange={onIncomeOpenChange}
           />
@@ -80,19 +101,30 @@ export default function AppHeader({
             onOpenChange={onCategoriesOpenChange}
             hasLimitsSet={hasLimitsSet}
           />
+          <RecurringExpensesSettings
+            isOpen={recurringOpen}
+            onOpenChange={onRecurringOpenChange}
+          />
           <LockButton />
 
-          <label htmlFor="month" className="sr-only">
-            Select month
+          <label
+            htmlFor="month"
+            onClick={handleMonthFieldClick}
+            className="relative inline-flex cursor-pointer items-center gap-2 rounded-xl border border-cardBorder bg-card px-3 py-2 text-sm text-zinc-200 transition-colors hover:border-neonViolet has-[:focus-visible]:border-neonViolet"
+          >
+            <span className="pointer-events-none select-none">{monthLabel}</span>
+            <Calendar className="pointer-events-none h-4 w-4 shrink-0 text-zinc-400" />
+            <input
+              ref={monthInputRef}
+              id="month"
+              name="month"
+              type="month"
+              value={currentMonthKey}
+              onChange={handleMonthChange}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0 [color-scheme:dark]"
+              aria-label={`Select month, currently ${monthLabel}`}
+            />
           </label>
-          <input
-            id="month"
-            name="month"
-            type="month"
-            value={currentMonthKey}
-            onChange={handleMonthChange}
-            className="rounded-xl border border-cardBorder bg-card px-3 py-2 text-sm text-zinc-200 outline-none transition-colors focus:border-neonViolet [color-scheme:dark]"
-          />
         </div>
       </div>
     </header>

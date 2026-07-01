@@ -1,4 +1,4 @@
-import { format, parse } from "date-fns";
+import { format, parse, subMonths } from "date-fns";
 
 export function resolveMonthKey(monthParam?: string): string {
   const fallback = format(new Date(), "yyyy-MM");
@@ -18,6 +18,14 @@ export function resolveMonthKey(monthParam?: string): string {
 
 export function monthKeyToDate(monthKey: string): Date {
   return parse(monthKey, "yyyy-MM", new Date());
+}
+
+export function formatMonthLabel(monthKey: string): string {
+  return format(monthKeyToDate(monthKey), "MMMM yyyy");
+}
+
+export function getPreviousMonthKey(monthKey: string): string {
+  return format(subMonths(monthKeyToDate(monthKey), 1), "yyyy-MM");
 }
 
 export function getMonthContextFromKey(monthKey: string, referenceDate?: Date) {

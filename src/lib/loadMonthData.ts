@@ -1,9 +1,10 @@
 import { format } from "date-fns";
 import { DEFAULT_CATEGORIES } from "@/lib/constants";
-import { monthKeyToDate } from "@/lib/month";
+import { formatMonthLabel, monthKeyToDate } from "@/lib/month";
 import {
+  ensureMonthBudgetAction,
   getCurrentMonthExpensesAction,
-  getOrCreateMonthlyBudgetAction,
+  seedRecurringExpensesForMonthAction,
 } from "@/lib/actions";
 import type { BudgetCategory } from "@/lib/types";
 
@@ -27,6 +28,7 @@ export interface MonthData {
   monthLabel: string;
   budget: MonthBudget;
   expenses: MonthExpense[];
+  carriedFromMonthLabel?: string;
 }
 
 export async function loadMonthData(monthKey: string): Promise<MonthData> {
@@ -39,12 +41,15 @@ export async function loadMonthData(monthKey: string): Promise<MonthData> {
     categories: DEFAULT_CATEGORIES,
   };
   let expenses: MonthExpense[] = [];
+  let carriedFromMonthLabel: string | undefined;
 
   try {
-    const [loadedBudget, loadedExpenses] = await Promise.all([
-      getOrCreateMonthlyBudgetAction(monthKey),
-      getCurrentMonthExpensesAction(monthKey),
-    ]);
+    const { budget: loadedBudget, carriedFromMonthKey } =
+      await ensureMonthBudgetAction(monthKey);
+
+    await seedRecurringExpensesForMonthAction(monthKey);
+
+    const loadedExpenses = await getCurrentMonthExpensesAction(monthKey);
 
     budget = {
       monthKey: loadedBudget.monthKey ?? monthKey,
@@ -57,6 +62,10 @@ export async function loadMonthData(monthKey: string): Promise<MonthData> {
           : DEFAULT_CATEGORIES,
     };
     expenses = Array.isArray(loadedExpenses) ? loadedExpenses : [];
+
+    if (carriedFromMonthKey) {
+      carriedFromMonthLabel = formatMonthLabel(carriedFromMonthKey);
+    }
   } catch {
     budget = {
       monthKey,
@@ -67,5 +76,5 @@ export async function loadMonthData(monthKey: string): Promise<MonthData> {
     expenses = [];
   }
 
-  return { monthKey, monthLabel, budget, expenses };
+  return { monthKey, monthLabel, budget, expenses, carriedFromMonthLabel };
 }

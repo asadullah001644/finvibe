@@ -16,7 +16,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     return <AuthGate locked>{null}</AuthGate>;
   }
 
-  const { monthKey, monthLabel, budget, expenses } = pageData;
+  const { monthKey, monthLabel, budget, expenses, carriedFromMonthLabel } = pageData;
   const categoryNames = budget.categories.map((category) => category.name);
 
   return (
@@ -25,6 +25,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         activeTab="calendar"
         currentMonthKey={monthKey}
         monthLabel={monthLabel}
+        carriedFromMonthLabel={carriedFromMonthLabel}
         budget={budget}
       >
         <HeatmapCalendar

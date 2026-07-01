@@ -1,5 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
-import type { Budget, BudgetCategory, SerializedExpense } from "@/lib/types";
+import type {
+  Budget,
+  BudgetCategory,
+  RecurringExpense,
+  SerializedExpense,
+} from "@/lib/types";
 import { DEFAULT_CATEGORIES, mergeWithDefaultCategories } from "@/lib/constants";
 import { revalidatePath } from "next/cache";
 
@@ -17,6 +22,15 @@ interface ExpenseRow {
   category: string;
   description: string | null;
   date: string;
+  recurring_expense_id?: string | null;
+}
+
+interface RecurringExpenseRow {
+  id: string;
+  amount: number;
+  category: string;
+  description: string | null;
+  is_active: boolean;
 }
 
 interface BudgetPatchFields {
@@ -31,8 +45,48 @@ interface BudgetInsertDefaults {
   categories: BudgetCategory[];
 }
 
+export interface EnsureMonthBudgetResult {
+  budget: Budget;
+  carriedFromMonthKey?: string;
+}
+
+function isMeaningfulBudget(budget: Budget): boolean {
+  return (
+    budget.totalSalary > 0 ||
+    budget.savingsGoal > 0 ||
+    budget.categories.some((category) => category.allocated > 0)
+  );
+}
+
+function mapRecurringExpenseRow(row: RecurringExpenseRow): RecurringExpense {
+  return {
+    id: row.id,
+    amount: Number(row.amount ?? 0),
+    category: row.category ?? "General",
+    description: row.description ?? "",
+    isActive: row.is_active ?? true,
+  };
+}
+
 function isDuplicateKeyError(error: { code?: string } | null): boolean {
   return error?.code === "23505";
+}
+
+function isRecurringSchemaUnavailableError(
+  error: { code?: string; message?: string } | null,
+): boolean {
+  if (!error) {
+    return false;
+  }
+
+  const message = error.message ?? "";
+
+  return (
+    error.code === "PGRST205" ||
+    error.code === "42P01" ||
+    message.includes("recurring_expenses") ||
+    message.includes("recurring_expense_id")
+  );
 }
 
 function parseMonthKey(monthKey: string): { year: number; monthIndex: number } | null {
@@ -119,13 +173,30 @@ export async function getBudget(monthKey: string): Promise<Budget | null> {
   return data ? mapBudgetRow(data as BudgetRow, monthKey) : null;
 }
 
-export async function getOrCreateMonthlyBudget(monthKey: string): Promise<Budget> {
-  const existing = await getBudget(monthKey);
+export async function getMostRecentPriorBudget(
+  monthKey: string,
+): Promise<Budget | null> {
+  const supabase = await createClient();
 
-  if (existing) {
-    return existing;
+  const { data, error } = await supabase
+    .from("budgets")
+    .select("*")
+    .lt("month_key", monthKey)
+    .order("month_key", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error fetching prior budget:", error);
+    throw new Error(error.message);
   }
 
+  return data
+    ? mapBudgetRow(data as BudgetRow, (data as BudgetRow).month_key)
+    : null;
+}
+
+async function createEmptyBudget(monthKey: string): Promise<Budget> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -140,8 +211,7 @@ export async function getOrCreateMonthlyBudget(monthKey: string): Promise<Budget
     .single();
 
   if (error) {
-    // Another request may have created the row first.
-    if (error.code === "23505") {
+    if (isDuplicateKeyError(error)) {
       const raced = await getBudget(monthKey);
       if (raced) {
         return raced;
@@ -153,6 +223,53 @@ export async function getOrCreateMonthlyBudget(monthKey: string): Promise<Budget
   }
 
   return mapBudgetRow(data as BudgetRow, monthKey);
+}
+
+export async function ensureMonthBudget(
+  monthKey: string,
+): Promise<EnsureMonthBudgetResult> {
+  const existing = await getBudget(monthKey);
+
+  if (existing && isMeaningfulBudget(existing)) {
+    return { budget: existing };
+  }
+
+  const prior = await getMostRecentPriorBudget(monthKey);
+
+  if (prior) {
+    await patchBudgetRow(
+      monthKey,
+      {
+        total_salary: prior.totalSalary,
+        savings_goal: prior.savingsGoal,
+        categories: prior.categories,
+      },
+      {
+        total_salary: prior.totalSalary,
+        savings_goal: prior.savingsGoal,
+        categories: prior.categories,
+      },
+    );
+
+    const budget = await getBudget(monthKey);
+
+    return {
+      budget: budget ?? prior,
+      carriedFromMonthKey: prior.monthKey,
+    };
+  }
+
+  if (existing) {
+    return { budget: existing };
+  }
+
+  const budget = await createEmptyBudget(monthKey);
+  return { budget };
+}
+
+export async function getOrCreateMonthlyBudget(monthKey: string): Promise<Budget> {
+  const result = await ensureMonthBudget(monthKey);
+  return result.budget;
 }
 
 async function patchBudgetRow(
@@ -345,4 +462,190 @@ export async function getExpensesForMonth(
   }
 
   return (data as ExpenseRow[]).map(mapExpenseRow);
+}
+
+export async function getRecurringExpenses(): Promise<RecurringExpense[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("recurring_expenses")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    if (isRecurringSchemaUnavailableError(error)) {
+      console.warn(
+        "Recurring expenses table not found — run supabase/migrations/002_recurring_expenses.sql in the Supabase SQL editor.",
+      );
+      return [];
+    }
+
+    console.error("Error fetching recurring expenses:", error);
+    throw new Error(error.message);
+  }
+
+  return (data as RecurringExpenseRow[]).map(mapRecurringExpenseRow);
+}
+
+export async function saveRecurringExpense(
+  input: {
+    id?: string;
+    amount: number;
+    category: string;
+    description: string;
+    isActive: boolean;
+  },
+): Promise<RecurringExpense> {
+  const supabase = await createClient();
+  const payload = {
+    amount: input.amount,
+    category: input.category,
+    description: input.description,
+    is_active: input.isActive,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (input.id) {
+    const { data, error } = await supabase
+      .from("recurring_expenses")
+      .update(payload)
+      .eq("id", input.id)
+      .select("*")
+      .single();
+
+    if (error) {
+      if (isRecurringSchemaUnavailableError(error)) {
+        throw new Error(
+          "Recurring expenses are not set up yet. Run supabase/migrations/002_recurring_expenses.sql in the Supabase SQL editor.",
+        );
+      }
+
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/");
+    return mapRecurringExpenseRow(data as RecurringExpenseRow);
+  }
+
+  const { data, error } = await supabase
+    .from("recurring_expenses")
+    .insert(payload)
+    .select("*")
+    .single();
+
+  if (error) {
+    if (isRecurringSchemaUnavailableError(error)) {
+      throw new Error(
+        "Recurring expenses are not set up yet. Run supabase/migrations/002_recurring_expenses.sql in the Supabase SQL editor.",
+      );
+    }
+
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/");
+  return mapRecurringExpenseRow(data as RecurringExpenseRow);
+}
+
+export async function deleteRecurringExpense(id: string): Promise<void> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("recurring_expenses")
+    .delete()
+    .eq("id", id)
+    .select("id");
+
+  if (error) {
+    if (isRecurringSchemaUnavailableError(error)) {
+      throw new Error(
+        "Recurring expenses are not set up yet. Run supabase/migrations/002_recurring_expenses.sql in the Supabase SQL editor.",
+      );
+    }
+
+    throw new Error(error.message);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error("Recurring expense not found.");
+  }
+
+  revalidatePath("/");
+}
+
+export async function seedRecurringExpensesForMonth(
+  monthKey: string,
+): Promise<void> {
+  const range = getMonthDateRange(monthKey);
+
+  if (!range) {
+    return;
+  }
+
+  const supabase = await createClient();
+
+  const [recurringResult, seededResult] = await Promise.all([
+    supabase
+      .from("recurring_expenses")
+      .select("*")
+      .eq("is_active", true),
+    supabase
+      .from("expenses")
+      .select("recurring_expense_id")
+      .gte("date", range.start)
+      .lte("date", range.end)
+      .not("recurring_expense_id", "is", null),
+  ]);
+
+  if (recurringResult.error) {
+    if (isRecurringSchemaUnavailableError(recurringResult.error)) {
+      console.warn(
+        "Recurring expenses table not found — run supabase/migrations/002_recurring_expenses.sql in the Supabase SQL editor.",
+      );
+      return;
+    }
+
+    throw new Error(recurringResult.error.message);
+  }
+
+  if (seededResult.error) {
+    if (isRecurringSchemaUnavailableError(seededResult.error)) {
+      console.warn(
+        "expenses.recurring_expense_id column not found — run supabase/migrations/002_recurring_expenses.sql in the Supabase SQL editor.",
+      );
+      return;
+    }
+
+    throw new Error(seededResult.error.message);
+  }
+
+  const seededIds = new Set(
+    (seededResult.data ?? [])
+      .map((row) => row.recurring_expense_id)
+      .filter(Boolean),
+  );
+
+  const toSeed = (recurringResult.data as RecurringExpenseRow[]).filter(
+    (item) => !seededIds.has(item.id),
+  );
+
+  if (toSeed.length === 0) {
+    return;
+  }
+
+  const { error } = await supabase.from("expenses").insert(
+    toSeed.map((item) => ({
+      amount: item.amount,
+      category: item.category,
+      description: item.description ?? "",
+      date: range.start,
+      recurring_expense_id: item.id,
+    })),
+  );
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/");
 }

@@ -30,3 +30,11 @@ export interface SerializedExpense {
   description: string;
   date: Date;
 }
+
+export interface RecurringExpense {
+  id: string;
+  amount: number;
+  category: string;
+  description: string;
+  isActive: boolean;
+}

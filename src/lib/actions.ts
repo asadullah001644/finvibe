@@ -4,15 +4,20 @@ import { cookies } from "next/headers";
 import {
   addExpense,
   deleteExpense,
-  getOrCreateMonthlyBudget,
+  deleteRecurringExpense,
+  ensureMonthBudget,
   getExpensesForMonth,
+  getMostRecentPriorBudget,
+  getRecurringExpenses,
+  saveRecurringExpense,
+  seedRecurringExpensesForMonth,
   updateBudgetIncome,
   updateCategoryAllocations,
   updateExpense,
 } from "@/actions/dbActions";
 import { DEFAULT_CATEGORIES } from "@/lib/constants";
 import { isValidExpenseId, parseExpenseDate } from "@/lib/expenseDate";
-import type { Budget, BudgetCategory, SerializedExpense } from "@/lib/types";
+import type { Budget, BudgetCategory, RecurringExpense, SerializedExpense } from "@/lib/types";
 
 const SESSION_COOKIE = "finvibe_session";
 const SESSION_VALUE = "unlocked";
@@ -33,6 +38,19 @@ export interface IncomeInput {
 export interface CategoryAllocationsInput {
   monthKey: string;
   categories: BudgetCategory[];
+}
+
+export interface RecurringExpenseInput {
+  id?: string;
+  amount: number;
+  category: string;
+  description: string;
+  isActive: boolean;
+}
+
+export interface EnsureMonthBudgetActionResult {
+  budget: Budget;
+  carriedFromMonthKey?: string;
 }
 
 export interface ActionResult {
@@ -205,9 +223,9 @@ export async function saveCategoryAllocationsAction(
   }
 }
 
-export async function getOrCreateMonthlyBudgetAction(
+export async function ensureMonthBudgetAction(
   monthKey: string,
-): Promise<Budget> {
+): Promise<EnsureMonthBudgetActionResult> {
   const fallbackBudget: Budget = {
     monthKey,
     totalSalary: 0,
@@ -217,14 +235,35 @@ export async function getOrCreateMonthlyBudgetAction(
 
   try {
     if (!(await hasValidSession())) {
-      return fallbackBudget;
+      return { budget: fallbackBudget };
     }
 
-    return await getOrCreateMonthlyBudget(monthKey);
+    return await ensureMonthBudget(monthKey);
   } catch (error) {
-    console.error("getOrCreateMonthlyBudgetAction:", error);
-    return fallbackBudget;
+    console.error("ensureMonthBudgetAction:", error);
+    return { budget: fallbackBudget };
   }
+}
+
+export async function seedRecurringExpensesForMonthAction(
+  monthKey: string,
+): Promise<void> {
+  try {
+    if (!(await hasValidSession())) {
+      return;
+    }
+
+    await seedRecurringExpensesForMonth(monthKey);
+  } catch (error) {
+    console.error("seedRecurringExpensesForMonthAction:", error);
+  }
+}
+
+export async function getOrCreateMonthlyBudgetAction(
+  monthKey: string,
+): Promise<Budget> {
+  const result = await ensureMonthBudgetAction(monthKey);
+  return result.budget;
 }
 
 export async function getCurrentMonthExpensesAction(
@@ -239,5 +278,83 @@ export async function getCurrentMonthExpensesAction(
   } catch (error) {
     console.error("getCurrentMonthExpensesAction:", error);
     return [];
+  }
+}
+
+export async function getPriorMonthBudgetAction(
+  monthKey: string,
+): Promise<Budget | null> {
+  try {
+    if (!(await hasValidSession())) {
+      return null;
+    }
+
+    return await getMostRecentPriorBudget(monthKey);
+  } catch (error) {
+    console.error("getPriorMonthBudgetAction:", error);
+    return null;
+  }
+}
+
+export async function getRecurringExpensesAction(): Promise<RecurringExpense[]> {
+  try {
+    if (!(await hasValidSession())) {
+      return [];
+    }
+
+    return await getRecurringExpenses();
+  } catch (error) {
+    console.error("getRecurringExpensesAction:", error);
+    return [];
+  }
+}
+
+export async function saveRecurringExpenseAction(
+  input: RecurringExpenseInput,
+): Promise<ActionResult & { item?: RecurringExpense }> {
+  if (!(await hasValidSession())) {
+    return sessionError();
+  }
+
+  const { id, amount, category, description, isActive } = input;
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { success: false, error: "Enter a valid amount greater than zero." };
+  }
+
+  if (!category.trim()) {
+    return { success: false, error: "Select a category to continue." };
+  }
+
+  try {
+    const item = await saveRecurringExpense({
+      id,
+      amount,
+      category: category.trim(),
+      description: description.trim(),
+      isActive,
+    });
+    return { success: true, item };
+  } catch (error) {
+    return actionError(error, "Could not save recurring expense.");
+  }
+}
+
+export async function deleteRecurringExpenseAction(
+  id: string,
+): Promise<ActionResult> {
+  if (!(await hasValidSession())) {
+    return sessionError();
+  }
+
+  if (!isValidExpenseId(id)) {
+    return { success: false, error: "Invalid recurring expense id." };
+  }
+
+  try {
+    await deleteRecurringExpense(id);
+    return { success: true };
+  } catch (error) {
+    return actionError(error, "Could not delete recurring expense.");
   }
 }

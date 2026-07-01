@@ -17,7 +17,7 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
     return <AuthGate locked>{null}</AuthGate>;
   }
 
-  const { monthKey, monthLabel, budget, expenses } = pageData;
+  const { monthKey, monthLabel, budget, expenses, carriedFromMonthLabel } = pageData;
 
   const graphExpenses = expenses.map((expense) => ({
     amount: expense.amount,
@@ -39,6 +39,7 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
         activeTab="insights"
         currentMonthKey={monthKey}
         monthLabel={monthLabel}
+        carriedFromMonthLabel={carriedFromMonthLabel}
         budget={budget}
       >
         {hasBudgetMetrics ? (

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import PinUnlock from "@/components/PinUnlock";
+import PageLoadingSpinner from "@/components/PageLoadingSpinner";
 import { resolveMonthKey } from "@/lib/month";
 import { loadMonthData } from "@/lib/loadMonthData";
 import { isSessionUnlocked } from "@/lib/requireUnlocked";
@@ -23,11 +24,7 @@ export async function getAuthenticatedMonthPageData(
 }
 
 export function PageLoadingFallback() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-[#09090B] text-sm text-zinc-500">
-      Loading...
-    </div>
-  );
+  return <PageLoadingSpinner />;
 }
 
 export function AuthGate({
