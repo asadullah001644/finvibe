@@ -11,7 +11,6 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import NavigationLoadingOverlay from "@/components/NavigationLoadingOverlay";
 
 interface NavigationContextValue {
   navigate: (href: string) => void;
@@ -86,7 +85,6 @@ export default function NavigationLoadingProvider({
   return (
     <NavigationContext.Provider value={{ navigate, isNavigating: showOverlay }}>
       {children}
-      {showOverlay && <NavigationLoadingOverlay />}
     </NavigationContext.Provider>
   );
 }

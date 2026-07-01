@@ -24,6 +24,7 @@ export default function PinPad({ onSuccess }: PinPadProps) {
 
   const [pin, setPin] = useState("");
   const [phase, setPhase] = useState<PinPhase>("idle");
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [shake, setShake] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -41,18 +42,14 @@ export default function PinPad({ onSuccess }: PinPadProps) {
     try {
       const success = await verifyPin(pinValue);
 
-      if (success) {
-        setPhase("unlocking");
-        onSuccessRef.current?.();
-        return;
+      if (!success) {
+        setPhase("error");
+        setShake(true);
+        setPin("");
       }
-
-      setPhase("error");
-      setShake(true);
-      setPin("");
     } catch (error) {
       if (isRedirectError(error)) {
-        setPhase("unlocking");
+        setIsRedirecting(true);
         onSuccessRef.current?.();
         return;
       }
@@ -110,6 +107,10 @@ export default function PinPad({ onSuccess }: PinPadProps) {
     }
   };
 
+  if (isRedirecting) {
+    return null;
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xl bg-background/80">
       <motion.div
@@ -153,7 +154,6 @@ export default function PinPad({ onSuccess }: PinPadProps) {
         >
           {Array.from({ length: PIN_LENGTH }).map((_, index) => {
             const isFilled = index < pin.length;
-            const isActive = phase === "verifying" && index === pin.length - 1;
 
             return (
               <motion.span
@@ -181,28 +181,11 @@ export default function PinPad({ onSuccess }: PinPadProps) {
                     ? "border-neonEmerald bg-neonEmerald"
                     : isFilled
                       ? "border-neonViolet bg-neonViolet shadow-[0_0_14px_rgba(139,92,246,0.75)]"
-                      : isActive
-                        ? "border-neonViolet/60 bg-neonViolet/20"
-                        : "border-cardBorder bg-card/50"
+                      : "border-cardBorder bg-card/50"
                 }`}
               />
             );
           })}
-
-          <AnimatePresence>
-            {phase === "verifying" && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="absolute inset-0 flex items-center justify-center"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-neonViolet/30 bg-card/90 shadow-[0_0_24px_rgba(139,92,246,0.2)]">
-                  <Loader2 className="h-5 w-5 animate-spin text-neonViolet" />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </motion.div>
 
         <AnimatePresence mode="wait">
