@@ -1,0 +1,26 @@
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
+
+html {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  background-color: #09090B;
+  color: #fafafa;
+}
+
+::selection {
+  color: #8B5CF6;
+  background-color: rgba(139, 92, 246, 0.2);
+}
+
+::-moz-selection {
+  color: #8B5CF6;
+  background-color: rgba(139, 92, 246, 0.2);
+}
