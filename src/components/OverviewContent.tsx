@@ -1,11 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import CategoryTracker from "@/components/CategoryTracker";
+import CategorySummary from "@/components/CategorySummary";
 import SetupHero from "@/components/SetupHero";
 import SummaryStrip from "@/components/SummaryStrip";
 import { useAppShellActions } from "@/components/AppShell";
-import { buildCategoriesUrl } from "@/lib/navigation";
 import type { BudgetCategory } from "@/lib/types";
 
 interface OverviewContentProps {
@@ -30,7 +28,6 @@ export default function OverviewContent({
   budget,
   expenses,
 }: OverviewContentProps) {
-  const router = useRouter();
   const { openIncome, openCategories } = useAppShellActions();
 
   const hasBudgetMetrics = budget.totalSalary > 0 || budget.savingsGoal > 0;
@@ -56,15 +53,11 @@ export default function OverviewContent({
       )}
 
       {hasBudgetMetrics && (
-        <CategoryTracker
+        <CategorySummary
+          monthKey={monthKey}
           categories={budget.categories}
           expenses={auditExpenses}
           onOpenCategories={openCategories}
-          onCategorySelect={(categoryName) => {
-            router.push(
-              buildCategoriesUrl(monthKey, { category: categoryName }),
-            );
-          }}
         />
       )}
     </>

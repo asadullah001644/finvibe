@@ -1,62 +1,20 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { AlertTriangle } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { AlertTriangle, ChevronDown } from "lucide-react";
 import {
-  getCategoryGroups,
-  getChildCategoryName,
-} from "@/lib/constants";
+  buildGroupedCategoryRows,
+  type CategoryExpense,
+  type CategoryRow,
+} from "@/lib/categorySpend";
 import { formatCurrency } from "@/lib/currency";
 import type { BudgetCategory } from "@/lib/types";
-
-interface CategoryExpense {
-  amount: number;
-  category: string;
-}
 
 interface CategoryTrackerProps {
   categories: BudgetCategory[];
   expenses: CategoryExpense[];
   onOpenCategories?: () => void;
   onCategorySelect?: (categoryName: string) => void;
-}
-
-interface CategoryRow {
-  name: string;
-  displayName: string;
-  spent: number;
-  allocated: number;
-  percent: number | null;
-  isOver: boolean;
-  isChild?: boolean;
-}
-
-interface CategoryGroupRow {
-  label: string | null;
-  rollup?: CategoryRow;
-  items: CategoryRow[];
-}
-
-function buildCategoryRow(
-  name: string,
-  displayName: string,
-  spentByCategory: Record<string, number>,
-  allocatedByCategory: Record<string, number>,
-  isChild = false,
-): CategoryRow {
-  const spent = spentByCategory[name] ?? 0;
-  const allocated = allocatedByCategory[name] ?? 0;
-  const percent = allocated > 0 ? Math.round((spent / allocated) * 100) : null;
-
-  return {
-    name,
-    displayName,
-    spent,
-    allocated,
-    percent,
-    isOver: allocated > 0 && spent > allocated,
-    isChild,
-  };
 }
 
 function CategoryRowItem({
@@ -107,7 +65,7 @@ function CategoryRowItem({
         </span>
       </div>
 
-      {row.allocated > 0 && (
+      {row.allocated > 0 ? (
         <>
           <div className="h-2 overflow-hidden rounded-full bg-background">
             <div
@@ -122,13 +80,67 @@ function CategoryRowItem({
               row.isOver ? "text-neonCrimson" : "text-zinc-500"
             }`}
           >
-            {row.percent}% used
+            {row.percent}% of limit · {row.shareOfMonth}% of month
             {row.isOver &&
-              ` — ${formatCurrency(row.spent - row.allocated)} over`}
+              ` · ${formatCurrency(row.spent - row.allocated)} over`}
           </p>
         </>
+      ) : (
+        row.spent > 0 && (
+          <p className="text-xs text-zinc-500">
+            {row.shareOfMonth}% of month · no limit set
+          </p>
+        )
       )}
     </li>
+  );
+}
+
+function CollapsibleGroup({
+  label,
+  rollupSpent,
+  rollupAllocated,
+  defaultExpanded,
+  children,
+}: {
+  label: string;
+  rollupSpent: number;
+  rollupAllocated: number;
+  defaultExpanded: boolean;
+  children: React.ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setExpanded((current) => !current)}
+        className="mb-3 flex w-full items-center justify-between gap-3 border-b border-cardBorder/70 pb-2 text-left"
+      >
+        <span className="flex items-center gap-2">
+          <ChevronDown
+            className={`h-4 w-4 text-zinc-500 transition-transform ${
+              expanded ? "rotate-0" : "-rotate-90"
+            }`}
+          />
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-neonViolet/80">
+            {label}
+          </span>
+        </span>
+        <span className="text-sm font-semibold text-zinc-300">
+          {formatCurrency(rollupSpent)}
+          {rollupAllocated > 0 && (
+            <span className="font-normal text-zinc-500">
+              {" "}
+              / {formatCurrency(rollupAllocated)}
+            </span>
+          )}
+        </span>
+      </button>
+
+      {expanded && children}
+    </div>
   );
 }
 
@@ -138,90 +150,10 @@ export default function CategoryTracker({
   onOpenCategories,
   onCategorySelect,
 }: CategoryTrackerProps) {
-  const groupedRows = useMemo(() => {
-    const spentByCategory = expenses.reduce<Record<string, number>>(
-      (accumulator, expense) => {
-        accumulator[expense.category] =
-          (accumulator[expense.category] ?? 0) + expense.amount;
-        return accumulator;
-      },
-      {},
-    );
-
-    const allocatedByCategory = categories.reduce<Record<string, number>>(
-      (accumulator, category) => {
-        accumulator[category.name] = category.allocated;
-        return accumulator;
-      },
-      {},
-    );
-
-    const knownNames = new Set(categories.map((category) => category.name));
-
-    const groups: CategoryGroupRow[] = [];
-
-    for (const group of getCategoryGroups()) {
-      const items = group.items
-        .map((name) =>
-          buildCategoryRow(
-            name,
-            group.label ? getChildCategoryName(name) : name,
-            spentByCategory,
-            allocatedByCategory,
-            Boolean(group.label),
-          ),
-        )
-        .filter((row) => row.spent > 0 || row.allocated > 0);
-
-      if (items.length === 0) {
-        continue;
-      }
-
-      if (!group.label) {
-        groups.push({ label: null, items });
-        continue;
-      }
-
-      const rollupSpent = items.reduce((sum, row) => sum + row.spent, 0);
-      const rollupAllocated = items.reduce(
-        (sum, row) => sum + row.allocated,
-        0,
-      );
-
-      groups.push({
-        label: group.label,
-        rollup: buildCategoryRow(
-          group.label,
-          group.label,
-          { [group.label]: rollupSpent },
-          { [group.label]: rollupAllocated },
-        ),
-        items,
-      });
-    }
-
-    const extraItems = Object.entries(spentByCategory)
-      .filter(
-        ([name, spent]) => spent > 0 && !knownNames.has(name),
-      )
-      .map(([name, spent]) => ({
-        name,
-        displayName: name,
-        spent,
-        allocated: 0,
-        percent: null as number | null,
-        isOver: false,
-      }));
-
-    if (extraItems.length > 0) {
-      groups.push({
-        label: "Other categories",
-        items: extraItems,
-      });
-    }
-
-    return groups;
-  }, [categories, expenses]);
+  const { groups: groupedRows, totalSpent } = useMemo(
+    () => buildGroupedCategoryRows(categories, expenses),
+    [categories, expenses],
+  );
 
   const hasLimitsSet = categories.some((category) => category.allocated > 0);
   const hasAnyActivity = groupedRows.length > 0;
@@ -239,8 +171,8 @@ export default function CategoryTracker({
           </p>
           <p className="mt-1 text-sm text-zinc-500">
             {hasLimitsSet
-              ? "Track spend vs your category limits"
-              : "See where money goes — limits are optional"}
+              ? "Full breakdown vs your category limits"
+              : "Full breakdown — limits are optional"}
           </p>
         </div>
         {onOpenCategories && (
@@ -263,25 +195,9 @@ export default function CategoryTracker({
 
       {hasAnyActivity ? (
         <div className="space-y-5">
-          {groupedRows.map((group) => (
-            <div key={group.label ?? group.items[0]?.name ?? "misc"}>
-              {group.label && group.rollup && (
-                <div className="mb-3 flex items-center justify-between gap-3 border-b border-cardBorder/70 pb-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-neonViolet/80">
-                    {group.label}
-                  </span>
-                  <span className="text-sm font-semibold text-zinc-300">
-                    {formatCurrency(group.rollup.spent)}
-                    {group.rollup.allocated > 0 && (
-                      <span className="font-normal text-zinc-500">
-                        {" "}
-                        / {formatCurrency(group.rollup.allocated)}
-                      </span>
-                    )}
-                  </span>
-                </div>
-              )}
-
+          {groupedRows.map((group) => {
+            const groupKey = group.label ?? group.items[0]?.name ?? "misc";
+            const list = (
               <ul className="space-y-4">
                 {group.items.map((row) => (
                   <CategoryRowItem
@@ -291,8 +207,32 @@ export default function CategoryTracker({
                   />
                 ))}
               </ul>
-            </div>
-          ))}
+            );
+
+            if (group.label && group.rollup) {
+              return (
+                <CollapsibleGroup
+                  key={groupKey}
+                  label={group.label}
+                  rollupSpent={group.rollup.spent}
+                  rollupAllocated={group.rollup.allocated}
+                  defaultExpanded={group.rollup.isOver || group.rollup.spent > 0}
+                >
+                  {list}
+                </CollapsibleGroup>
+              );
+            }
+
+            return <div key={groupKey}>{list}</div>;
+          })}
+
+          {totalSpent > 0 && (
+            <p className="border-t border-cardBorder pt-3 text-xs text-zinc-500">
+              Month total: {formatCurrency(totalSpent)} across{" "}
+              {groupedRows.reduce((count, group) => count + group.items.length, 0)}{" "}
+              active categories
+            </p>
+          )}
         </div>
       ) : (
         <p className="text-sm text-zinc-500">

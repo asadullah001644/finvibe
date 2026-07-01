@@ -237,17 +237,19 @@ export async function ensureMonthBudget(
   const prior = await getMostRecentPriorBudget(monthKey);
 
   if (prior) {
+    const carriedCategories = mergeWithDefaultCategories(prior.categories);
+
     await patchBudgetRow(
       monthKey,
       {
         total_salary: prior.totalSalary,
         savings_goal: prior.savingsGoal,
-        categories: prior.categories,
+        categories: carriedCategories,
       },
       {
         total_salary: prior.totalSalary,
         savings_goal: prior.savingsGoal,
-        categories: prior.categories,
+        categories: carriedCategories,
       },
     );
 

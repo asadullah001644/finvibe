@@ -30,8 +30,10 @@ export const CATEGORY_TREE: CategoryNode[] = [
   { name: "Food" },
   { name: "Fuel" },
   { name: "Transport" },
+  { name: "Rides" },
   { name: "Shopping" },
   { name: "Personal" },
+  { name: "SIM" },
   { name: "Entertainment" },
   { name: "Other" },
 ];
@@ -115,9 +117,12 @@ export const CATEGORY_HINTS: Record<string, string> = {
   "Flat › Utilities": "Flat electricity, gas, water, internet",
   Food: "Meals, takeout, tea outside home",
   Fuel: "Petrol for car or bike",
-  Transport: "Ride-hailing, bus, parking",
+  Transport: "Bus, metro, parking, tolls",
+  Rides:
+    "InDrive, Yango — office commute, outings (fares vary daily; limit optional)",
   Shopping: "Clothes, electronics, general buys",
   Personal: "Your haircut, gym, hobbies",
+  SIM: "Monthly mobile package recharge (Jazz, Ufone, Zong, etc.)",
   Entertainment: "Movies, streaming, leisure",
   Other: "Anything that does not fit above",
 };
@@ -138,11 +143,13 @@ export const CATEGORY_BUDGET_WEIGHTS: Record<string, number> = {
   "Flat › Utilities": 0.035,
   Food: 0.07,
   Fuel: 0.05,
-  Transport: 0.035,
+  Transport: 0.025,
+  Rides: 0.04,
   Shopping: 0.05,
   Personal: 0.04,
+  SIM: 0.02,
   Entertainment: 0.03,
-  Other: 0.035,
+  Other: 0.03,
 };
 
 const LEGACY_CATEGORY_ALIASES: Record<string, string> = {

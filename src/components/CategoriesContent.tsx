@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import CategoryExplorer from "@/components/CategoryExplorer";
 import CategoryTracker from "@/components/CategoryTracker";
 import { useAppShellActions } from "@/components/AppShell";
+import { buildCategoriesUrl } from "@/lib/navigation";
 import type { BudgetCategory } from "@/lib/types";
 
 interface CategoriesContentProps {
@@ -24,6 +26,7 @@ export default function CategoriesContent({
   budget,
   expenses,
 }: CategoriesContentProps) {
+  const router = useRouter();
   const { openCategories } = useAppShellActions();
   const categoryNames = budget.categories.map((category) => category.name);
 
@@ -36,16 +39,19 @@ export default function CategoriesContent({
 
   return (
     <>
-      <CategoryExplorer
-        monthKey={monthKey}
-        expenses={expenses}
-        categoryNames={categoryNames}
-      />
-
       <CategoryTracker
         categories={budget.categories}
         expenses={auditExpenses}
         onOpenCategories={openCategories}
+        onCategorySelect={(categoryName) => {
+          router.push(buildCategoriesUrl(monthKey, { category: categoryName }));
+        }}
+      />
+
+      <CategoryExplorer
+        monthKey={monthKey}
+        expenses={expenses}
+        categoryNames={categoryNames}
       />
     </>
   );

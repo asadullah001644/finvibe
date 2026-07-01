@@ -236,7 +236,7 @@ export default function RecurringExpensesSettings({
                         description: event.target.value,
                       }))
                     }
-                    placeholder="Rent, Netflix, utilities..."
+                    placeholder="SIM package, rent, Netflix..."
                     className="w-full rounded-xl border border-cardBorder bg-background px-4 py-3 text-zinc-100 outline-none transition-colors focus:border-neonViolet"
                   />
                 </label>
@@ -326,8 +326,8 @@ export default function RecurringExpensesSettings({
                   <p className="text-sm text-zinc-500">Loading...</p>
                 ) : items.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-cardBorder px-4 py-6 text-center text-sm text-zinc-500">
-                    No recurring expenses yet. Add rent, subscriptions, or other
-                    fixed costs above.
+                    No recurring expenses yet. Add your SIM package, rent,
+                    subscriptions, or other fixed costs above.
                   </p>
                 ) : (
                   items.map((item) => (
