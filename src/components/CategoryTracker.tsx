@@ -18,6 +18,7 @@ interface CategoryTrackerProps {
   categories: BudgetCategory[];
   expenses: CategoryExpense[];
   onOpenCategories?: () => void;
+  onCategorySelect?: (categoryName: string) => void;
 }
 
 interface CategoryRow {
@@ -58,7 +59,13 @@ function buildCategoryRow(
   };
 }
 
-function CategoryRowItem({ row }: { row: CategoryRow }) {
+function CategoryRowItem({
+  row,
+  onCategorySelect,
+}: {
+  row: CategoryRow;
+  onCategorySelect?: (categoryName: string) => void;
+}) {
   const fillPercent =
     row.allocated > 0
       ? Math.min((row.spent / row.allocated) * 100, 100)
@@ -68,13 +75,19 @@ function CategoryRowItem({ row }: { row: CategoryRow }) {
     <li className={row.isChild ? "ml-4 border-l border-cardBorder pl-3" : ""}>
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span
-            className={`font-medium text-zinc-200 ${
-              row.isChild ? "text-sm" : "text-sm"
-            }`}
-          >
-            {row.displayName}
-          </span>
+          {onCategorySelect && row.spent > 0 ? (
+            <button
+              type="button"
+              onClick={() => onCategorySelect(row.name)}
+              className="text-left text-sm font-medium text-zinc-200 transition-colors hover:text-neonViolet"
+            >
+              {row.displayName}
+            </button>
+          ) : (
+            <span className="text-sm font-medium text-zinc-200">
+              {row.displayName}
+            </span>
+          )}
           {row.isOver && (
             <AlertTriangle className="h-3.5 w-3.5 text-neonCrimson" />
           )}
@@ -123,6 +136,7 @@ export default function CategoryTracker({
   categories,
   expenses,
   onOpenCategories,
+  onCategorySelect,
 }: CategoryTrackerProps) {
   const groupedRows = useMemo(() => {
     const spentByCategory = expenses.reduce<Record<string, number>>(
@@ -270,7 +284,11 @@ export default function CategoryTracker({
 
               <ul className="space-y-4">
                 {group.items.map((row) => (
-                  <CategoryRowItem key={row.name} row={row} />
+                  <CategoryRowItem
+                    key={row.name}
+                    row={row}
+                    onCategorySelect={onCategorySelect}
+                  />
                 ))}
               </ul>
             </div>

@@ -1,15 +1,15 @@
 import AppShell from "@/components/AppShell";
-import OverviewContent from "@/components/OverviewContent";
+import HeatmapCalendar from "@/components/HeatmapCalendar";
 import {
   AuthGate,
   getAuthenticatedMonthPageData,
 } from "@/lib/pageHelpers";
 
-interface OverviewPageProps {
+interface CalendarPageProps {
   searchParams: Promise<{ month?: string }>;
 }
 
-export default async function OverviewPage({ searchParams }: OverviewPageProps) {
+export default async function CalendarPage({ searchParams }: CalendarPageProps) {
   const pageData = await getAuthenticatedMonthPageData(searchParams);
 
   if (pageData.locked) {
@@ -17,20 +17,20 @@ export default async function OverviewPage({ searchParams }: OverviewPageProps) 
   }
 
   const { monthKey, monthLabel, budget, expenses } = pageData;
+  const categoryNames = budget.categories.map((category) => category.name);
 
   return (
     <AuthGate locked={false}>
       <AppShell
-        activeTab="overview"
+        activeTab="calendar"
         currentMonthKey={monthKey}
         monthLabel={monthLabel}
         budget={budget}
       >
-        <OverviewContent
+        <HeatmapCalendar
           monthKey={monthKey}
-          monthLabel={monthLabel}
-          budget={budget}
           expenses={expenses}
+          categoryNames={categoryNames}
         />
       </AppShell>
     </AuthGate>

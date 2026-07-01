@@ -1,15 +1,18 @@
 import AppShell from "@/components/AppShell";
-import OverviewContent from "@/components/OverviewContent";
+import CategoriesContent from "@/components/CategoriesContent";
 import {
   AuthGate,
+  ClientSuspense,
   getAuthenticatedMonthPageData,
 } from "@/lib/pageHelpers";
 
-interface OverviewPageProps {
-  searchParams: Promise<{ month?: string }>;
+interface CategoriesPageProps {
+  searchParams: Promise<{ month?: string; group?: string; category?: string }>;
 }
 
-export default async function OverviewPage({ searchParams }: OverviewPageProps) {
+export default async function CategoriesPage({
+  searchParams,
+}: CategoriesPageProps) {
   const pageData = await getAuthenticatedMonthPageData(searchParams);
 
   if (pageData.locked) {
@@ -21,17 +24,18 @@ export default async function OverviewPage({ searchParams }: OverviewPageProps) 
   return (
     <AuthGate locked={false}>
       <AppShell
-        activeTab="overview"
+        activeTab="categories"
         currentMonthKey={monthKey}
         monthLabel={monthLabel}
         budget={budget}
       >
-        <OverviewContent
-          monthKey={monthKey}
-          monthLabel={monthLabel}
-          budget={budget}
-          expenses={expenses}
-        />
+        <ClientSuspense>
+          <CategoriesContent
+            monthKey={monthKey}
+            budget={budget}
+            expenses={expenses}
+          />
+        </ClientSuspense>
       </AppShell>
     </AuthGate>
   );

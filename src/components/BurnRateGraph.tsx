@@ -170,45 +170,14 @@ export default function BurnRateGraph({
   const {
     chartData,
     spendLimit,
-    allowedDailyPace,
-    averageDailyBurn,
     spendableRemaining,
     isRunwayCritical,
     yAxisMax,
   } = analytics;
 
-  const velocityDelta = averageDailyBurn - allowedDailyPace;
-  const isVelocityCritical = velocityDelta > 0;
-
   return (
     <section className="w-full">
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-cardBorder bg-card px-4 py-4">
-          <p className="text-xs font-medium uppercase tracking-[0.25em] text-zinc-500">
-            Velocity Indicator
-          </p>
-          <div className="mt-3 flex items-end justify-between gap-3">
-            <div>
-              <p
-                className={`text-xl font-semibold ${
-                  isVelocityCritical ? "text-neonCrimson" : "text-neonEmerald"
-                }`}
-              >
-                {formatCurrency(averageDailyBurn)}
-                <span className="text-sm font-normal text-zinc-500"> / day</span>
-              </p>
-              <p className="mt-1 text-xs text-zinc-500">Current burn rate</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-medium text-zinc-300">
-                {formatCurrency(allowedDailyPace)}
-                <span className="text-xs text-zinc-500"> / day</span>
-              </p>
-              <p className="mt-1 text-xs text-zinc-500">Allowed target pace</p>
-            </div>
-          </div>
-        </div>
-
+      <div className="mb-4">
         <div className="rounded-2xl border border-cardBorder bg-card px-4 py-4">
           <p className="text-xs font-medium uppercase tracking-[0.25em] text-zinc-500">
             Current Runway
