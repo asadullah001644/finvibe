@@ -2,25 +2,25 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Calendar, DollarSign, FileText, Plus, X } from "lucide-react";
+import { Calendar, Banknote, FileText, Plus, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { saveExpenseAction } from "@/lib/actions";
+import { CATEGORY_HINTS } from "@/lib/constants";
+import { getLocalTodayDateString } from "@/lib/expenseDate";
 
 interface QuickLogFABProps {
   customCategories: string[];
 }
 
-function getTodayDateString(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
 export default function QuickLogFAB({ customCategories }: QuickLogFABProps) {
+  const router = useRouter();
   const amountRef = useRef<HTMLInputElement>(null);
 
   const [isOpen, setIsOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
-  const [date, setDate] = useState(getTodayDateString);
+  const [date, setDate] = useState(getLocalTodayDateString);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +40,7 @@ export default function QuickLogFAB({ customCategories }: QuickLogFABProps) {
     setAmount("");
     setCategory("");
     setDescription("");
-    setDate(getTodayDateString());
+    setDate(getLocalTodayDateString());
     setError(null);
   };
 
@@ -76,12 +76,13 @@ export default function QuickLogFAB({ customCategories }: QuickLogFABProps) {
       });
 
       if (!result.success) {
-        setError("Unable to save expense. Please try again.");
+        setError(result.error ?? "Unable to save expense. Please try again.");
         return;
       }
 
       resetForm();
       setIsOpen(false);
+      router.refresh();
     } catch {
       setError("Something went wrong while saving.");
     } finally {
@@ -154,8 +155,8 @@ export default function QuickLogFAB({ customCategories }: QuickLogFABProps) {
               <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-6">
                 <label className="block">
                   <span className="mb-2 flex items-center gap-2 text-sm font-medium text-zinc-300">
-                    <DollarSign className="h-4 w-4 text-neonEmerald" />
-                    Amount
+                    <Banknote className="h-4 w-4 text-neonEmerald" />
+                    Amount (PKR)
                   </span>
                   <input
                     ref={amountRef}
@@ -163,7 +164,7 @@ export default function QuickLogFAB({ customCategories }: QuickLogFABProps) {
                     inputMode="decimal"
                     step="0.01"
                     min="0"
-                    placeholder="0.00"
+                    placeholder="0"
                     value={amount}
                     onChange={(event) => setAmount(event.target.value)}
                     className="w-full rounded-2xl border border-cardBorder bg-card px-4 py-4 text-2xl font-semibold text-zinc-100 outline-none transition-colors placeholder:text-zinc-600 focus:border-neonViolet focus:shadow-[0_0_0_1px_rgba(139,92,246,0.45)]"
@@ -172,26 +173,33 @@ export default function QuickLogFAB({ customCategories }: QuickLogFABProps) {
 
                 <div>
                   <p className="mb-3 text-sm font-medium text-zinc-300">Category</p>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {customCategories.map((item) => {
-                      const isSelected = category === item;
+                  <div className="max-h-48 overflow-y-auto rounded-2xl border border-cardBorder/60 p-2">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {customCategories.map((item) => {
+                        const isSelected = category === item;
 
-                      return (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => setCategory(item)}
-                          className={`min-h-16 rounded-2xl border px-3 py-4 text-sm font-medium transition-colors ${
-                            isSelected
-                              ? "border-neonViolet bg-card text-neonViolet shadow-[0_0_20px_rgba(139,92,246,0.18)]"
-                              : "border-cardBorder bg-card text-zinc-200 hover:border-neonViolet"
-                          }`}
-                        >
-                          {item}
-                        </button>
-                      );
-                    })}
+                        return (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => setCategory(item)}
+                            className={`min-h-14 rounded-xl border px-2 py-3 text-xs font-medium transition-colors sm:text-sm ${
+                              isSelected
+                                ? "border-neonViolet bg-card text-neonViolet shadow-[0_0_20px_rgba(139,92,246,0.18)]"
+                                : "border-cardBorder bg-card text-zinc-200 hover:border-neonViolet"
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
+                  {category && CATEGORY_HINTS[category] && (
+                    <p className="mt-2 text-xs text-zinc-500">
+                      {CATEGORY_HINTS[category]}
+                    </p>
+                  )}
                 </div>
 
                 <label className="block">

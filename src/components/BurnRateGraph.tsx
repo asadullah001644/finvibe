@@ -12,7 +12,8 @@ import {
   YAxis,
 } from "recharts";
 import { motion } from "framer-motion";
-
+import { computeBudgetMetrics } from "@/lib/budgetMetrics";
+import { formatCompactCurrency, formatCurrency } from "@/lib/currency";
 import { getMonthContextFromKey } from "@/lib/month";
 
 interface BurnRateGraphProps {
@@ -38,14 +39,6 @@ function getMonthContext(monthKey: string) {
   return getMonthContextFromKey(monthKey);
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 function buildChartData(
   monthKey: string,
   salary: number,
@@ -54,16 +47,18 @@ function buildChartData(
 ): {
   chartData: ChartPoint[];
   totalSpent: number;
+  spendLimit: number;
   allowedDailyPace: number;
   averageDailyBurn: number;
-  remainingBalance: number;
+  spendableRemaining: number;
   isRunwayCritical: boolean;
+  yAxisMax: number;
 } {
   const { year, monthIndex, totalDaysInMonth, currentDay } =
     getMonthContext(monthKey);
   const month = monthIndex;
-  const monthlySpendBudget = Math.max(salary - savingsGoal, 0);
-  const allowedDailyPace = monthlySpendBudget / totalDaysInMonth;
+  const { spendLimit } = computeBudgetMetrics(salary, savingsGoal, 0);
+  const allowedDailyPace = spendLimit / totalDaysInMonth;
 
   const dailyTotals = Array.from({ length: totalDaysInMonth }, () => 0);
 
@@ -103,16 +98,23 @@ function buildChartData(
   const totalSpent = dailyTotals.reduce((sum, amount) => sum + amount, 0);
   const averageDailyBurn =
     currentDay > 0 ? totalSpent / currentDay : totalSpent;
-  const remainingBalance = salary - totalSpent;
-  const isRunwayCritical = remainingBalance < savingsGoal;
+  const { spendableRemaining } = computeBudgetMetrics(
+    salary,
+    savingsGoal,
+    totalSpent,
+  );
+  const isRunwayCritical = spendableRemaining <= 0;
+  const yAxisMax = Math.max(spendLimit, totalSpent);
 
   return {
     chartData,
     totalSpent,
+    spendLimit,
     allowedDailyPace,
     averageDailyBurn,
-    remainingBalance,
+    spendableRemaining,
     isRunwayCritical,
+    yAxisMax,
   };
 }
 
@@ -167,10 +169,12 @@ export default function BurnRateGraph({
 
   const {
     chartData,
+    spendLimit,
     allowedDailyPace,
     averageDailyBurn,
-    remainingBalance,
+    spendableRemaining,
     isRunwayCritical,
+    yAxisMax,
   } = analytics;
 
   const velocityDelta = averageDailyBurn - allowedDailyPace;
@@ -207,7 +211,7 @@ export default function BurnRateGraph({
 
         <div className="rounded-2xl border border-cardBorder bg-card px-4 py-4">
           <p className="text-xs font-medium uppercase tracking-[0.25em] text-zinc-500">
-            Current Runway / Remaining Balance
+            Current Runway
           </p>
           <motion.p
             animate={
@@ -221,13 +225,13 @@ export default function BurnRateGraph({
                 : undefined
             }
             className={`mt-3 text-2xl font-semibold ${
-              isRunwayCritical ? "text-neonCrimson" : "text-zinc-100"
+              isRunwayCritical ? "text-neonCrimson" : "text-neonEmerald"
             }`}
           >
-            {formatCurrency(remainingBalance)}
+            {formatCurrency(spendableRemaining)}
           </motion.p>
           <p className="mt-1 text-xs text-zinc-500">
-            Savings goal floor: {formatCurrency(savingsGoal)}
+            Spendable remaining of {formatCurrency(spendLimit)} limit
           </p>
         </div>
       </div>
@@ -296,12 +300,11 @@ export default function BurnRateGraph({
               />
 
               <YAxis
+                domain={[0, yAxisMax]}
                 tick={{ fill: "#71717A", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(value: number) =>
-                  value >= 1000 ? `$${Math.round(value / 1000)}k` : `$${value}`
-                }
+                tickFormatter={(value: number) => formatCompactCurrency(value)}
                 width={48}
               />
 

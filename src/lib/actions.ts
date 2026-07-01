@@ -6,9 +6,12 @@ import {
   deleteExpense,
   getOrCreateMonthlyBudget,
   getExpensesForMonth,
-  updateBudget,
+  updateBudgetIncome,
+  updateCategoryAllocations,
   updateExpense,
 } from "@/actions/dbActions";
+import { DEFAULT_CATEGORIES } from "@/lib/constants";
+import { isValidExpenseId, parseExpenseDate } from "@/lib/expenseDate";
 import type { Budget, BudgetCategory, SerializedExpense } from "@/lib/types";
 
 const SESSION_COOKIE = "finvibe_session";
@@ -21,11 +24,20 @@ export interface ExpenseInput {
   date: string;
 }
 
-export interface BudgetInput {
+export interface IncomeInput {
   monthKey: string;
   totalSalary: number;
   savingsGoal: number;
+}
+
+export interface CategoryAllocationsInput {
+  monthKey: string;
   categories: BudgetCategory[];
+}
+
+export interface ActionResult {
+  success: boolean;
+  error?: string;
 }
 
 async function hasValidSession(): Promise<boolean> {
@@ -35,135 +47,183 @@ async function hasValidSession(): Promise<boolean> {
   return session?.value === SESSION_VALUE;
 }
 
+function sessionError(): ActionResult {
+  return { success: false, error: "Session expired. Unlock the app and try again." };
+}
+
+function validateExpenseInput(
+  expenseData: ExpenseInput,
+): { ok: true; date: string } | { ok: false; error: string } {
+  const { amount, category, description, date } = expenseData;
+  const normalizedDate = parseExpenseDate(date);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, error: "Enter a valid amount greater than zero." };
+  }
+
+  if (!category.trim()) {
+    return { ok: false, error: "Select a category to continue." };
+  }
+
+  if (!normalizedDate) {
+    return { ok: false, error: "Enter a valid expense date." };
+  }
+
+  return {
+    ok: true,
+    date: normalizedDate,
+  };
+}
+
+function actionError(error: unknown, fallback: string): ActionResult {
+  console.error(fallback, error);
+  const message = error instanceof Error ? error.message : fallback;
+  return { success: false, error: message };
+}
+
 export async function saveExpenseAction(
   expenseData: ExpenseInput,
-): Promise<{ success: boolean }> {
+): Promise<ActionResult> {
   if (!(await hasValidSession())) {
-    return { success: false };
+    return sessionError();
   }
 
-  const { amount, category, description, date } = expenseData;
+  const validated = validateExpenseInput(expenseData);
 
-  if (!Number.isFinite(amount) || amount <= 0 || !category.trim() || !date) {
-    return { success: false };
-  }
-
-  const parsedDate = new Date(date);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return { success: false };
+  if (!validated.ok) {
+    return { success: false, error: validated.error };
   }
 
   try {
-    await addExpense(amount, category.trim(), description.trim(), date);
+    await addExpense(
+      expenseData.amount,
+      expenseData.category.trim(),
+      expenseData.description.trim(),
+      validated.date,
+    );
     return { success: true };
-  } catch {
-    return { success: false };
+  } catch (error) {
+    return actionError(error, "Could not save expense.");
   }
 }
 
 export async function updateExpenseAction(
   id: string,
   expenseData: ExpenseInput,
-): Promise<{ success: boolean }> {
+): Promise<ActionResult> {
   if (!(await hasValidSession())) {
-    return { success: false };
+    return sessionError();
   }
 
-  const { amount, category, description, date } = expenseData;
-
-  if (
-    !id ||
-    !Number.isFinite(amount) ||
-    amount <= 0 ||
-    !category.trim() ||
-    !date
-  ) {
-    return { success: false };
+  if (!isValidExpenseId(id)) {
+    return { success: false, error: "Invalid expense id." };
   }
 
-  const parsedDate = new Date(date);
+  const validated = validateExpenseInput(expenseData);
 
-  if (Number.isNaN(parsedDate.getTime())) {
-    return { success: false };
+  if (!validated.ok) {
+    return { success: false, error: validated.error };
   }
 
   try {
-    await updateExpense(id, amount, category.trim(), description.trim(), date);
+    await updateExpense(
+      id,
+      expenseData.amount,
+      expenseData.category.trim(),
+      expenseData.description.trim(),
+      validated.date,
+    );
     return { success: true };
-  } catch {
-    return { success: false };
+  } catch (error) {
+    return actionError(error, "Could not update expense.");
   }
 }
 
-export async function deleteExpenseAction(
-  id: string,
-): Promise<{ success: boolean }> {
+export async function deleteExpenseAction(id: string): Promise<ActionResult> {
   if (!(await hasValidSession())) {
-    return { success: false };
+    return sessionError();
   }
 
-  if (!id) {
-    return { success: false };
+  if (!isValidExpenseId(id)) {
+    return { success: false, error: "Invalid expense id." };
   }
 
   try {
     await deleteExpense(id);
     return { success: true };
-  } catch {
-    return { success: false };
+  } catch (error) {
+    return actionError(error, "Could not delete expense.");
   }
 }
 
-export async function saveBudgetAction(
-  budgetData: BudgetInput,
-): Promise<{ success: boolean }> {
+export async function saveIncomeAction(
+  incomeData: IncomeInput,
+): Promise<ActionResult> {
   if (!(await hasValidSession())) {
-    return { success: false };
+    return sessionError();
   }
 
-  const { monthKey, totalSalary, savingsGoal, categories } = budgetData;
+  const { monthKey, totalSalary, savingsGoal } = incomeData;
 
   if (
     !monthKey ||
     !Number.isFinite(totalSalary) ||
-    totalSalary < 0 ||
+    totalSalary <= 0 ||
     !Number.isFinite(savingsGoal) ||
     savingsGoal < 0 ||
-    !Array.isArray(categories)
+    savingsGoal >= totalSalary
   ) {
-    return { success: false };
+    return { success: false, error: "Invalid salary or savings goal." };
   }
 
   try {
-    await updateBudget(monthKey, totalSalary, savingsGoal, categories);
+    await updateBudgetIncome(monthKey, totalSalary, savingsGoal);
     return { success: true };
-  } catch {
-    return { success: false };
+  } catch (error) {
+    return actionError(error, "Could not save income.");
+  }
+}
+
+export async function saveCategoryAllocationsAction(
+  allocationData: CategoryAllocationsInput,
+): Promise<ActionResult> {
+  if (!(await hasValidSession())) {
+    return sessionError();
+  }
+
+  const { monthKey, categories } = allocationData;
+
+  if (!monthKey || !Array.isArray(categories)) {
+    return { success: false, error: "Invalid category data." };
+  }
+
+  try {
+    await updateCategoryAllocations(monthKey, categories);
+    return { success: true };
+  } catch (error) {
+    return actionError(error, "Could not save category limits.");
   }
 }
 
 export async function getOrCreateMonthlyBudgetAction(
   monthKey: string,
 ): Promise<Budget> {
+  const fallbackBudget: Budget = {
+    monthKey,
+    totalSalary: 0,
+    savingsGoal: 0,
+    categories: DEFAULT_CATEGORIES,
+  };
+
   try {
     if (!(await hasValidSession())) {
-      return {
-        monthKey,
-        totalSalary: 0,
-        savingsGoal: 0,
-        categories: [],
-      };
+      return fallbackBudget;
     }
 
     return await getOrCreateMonthlyBudget(monthKey);
-  } catch {
-    return {
-      monthKey,
-      totalSalary: 0,
-      savingsGoal: 0,
-      categories: [],
-    };
+  } catch (error) {
+    console.error("getOrCreateMonthlyBudgetAction:", error);
+    return fallbackBudget;
   }
 }
 
@@ -176,7 +236,8 @@ export async function getCurrentMonthExpensesAction(
     }
 
     return await getExpensesForMonth(monthKey);
-  } catch {
+  } catch (error) {
+    console.error("getCurrentMonthExpensesAction:", error);
     return [];
   }
 }

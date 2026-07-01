@@ -15,6 +15,7 @@ import {
   deleteExpenseAction,
   updateExpenseAction,
 } from "@/lib/actions";
+import { formatCurrencyPrecise } from "@/lib/currency";
 import { monthKeyToDate } from "@/lib/month";
 
 interface HeatmapExpense {
@@ -43,15 +44,6 @@ const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function normalizeExpenseDate(date: Date | string): Date {
   return date instanceof Date ? date : new Date(date);
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 }
 
 function getDayKey(date: Date): string {
@@ -194,7 +186,7 @@ function ExpenseEditForm({
     setIsSubmitting(false);
 
     if (!result.success) {
-      setError("Could not update expense.");
+      setError(result.error ?? "Could not update expense.");
       return;
     }
 
@@ -268,6 +260,7 @@ export default function HeatmapCalendar({
   const [selectedDay, setSelectedDay] = useState<DayCell | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const expenseMap = useMemo(() => buildExpenseMap(expenses), [expenses]);
 
@@ -280,6 +273,7 @@ export default function HeatmapCalendar({
   const selectedTotal = selectedDay?.total ?? 0;
 
   const handleDelete = async (id: string) => {
+    setDeleteError(null);
     setDeletingId(id);
     const result = await deleteExpenseAction(id);
     setDeletingId(null);
@@ -288,7 +282,10 @@ export default function HeatmapCalendar({
       setSelectedDay(null);
       setEditingId(null);
       router.refresh();
+      return;
     }
+
+    setDeleteError(result.error ?? "Could not delete expense.");
   };
 
   const handleSaved = () => {
@@ -340,9 +337,10 @@ export default function HeatmapCalendar({
               <button
                 key={getDayKey(cell.date)}
                 type="button"
-                aria-label={`${format(cell.date, "MMMM d, yyyy")}, ${formatCurrency(cell.total)} spent`}
+                aria-label={`${format(cell.date, "MMMM d, yyyy")}, ${formatCurrencyPrecise(cell.total)} spent`}
                 onClick={() => {
                   setEditingId(null);
+                  setDeleteError(null);
                   setSelectedDay(cell);
                 }}
                 className={`aspect-square rounded-xl border p-1 transition-colors ${getCellClasses(cell.total, cell.isOutlier, isSelected)}`}
@@ -356,7 +354,7 @@ export default function HeatmapCalendar({
                       cell.isOutlier ? "text-neonCrimson" : "text-zinc-400"
                     }`}
                   >
-                    {formatCurrency(cell.total)}
+                    {formatCurrencyPrecise(cell.total)}
                   </span>
                 )}
               </button>
@@ -367,7 +365,7 @@ export default function HeatmapCalendar({
         <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-zinc-500">
           <span className="flex items-center gap-2">
             <span className="h-3 w-3 rounded-md border border-transparent bg-transparent" />
-            $0 outflow
+            Rs 0 outflow
           </span>
           <span className="flex items-center gap-2">
             <span className="h-3 w-3 rounded-md border border-cardBorder bg-card" />
@@ -377,7 +375,7 @@ export default function HeatmapCalendar({
             <span className="h-3 w-3 rounded-md border border-neonCrimson/70 bg-neonCrimson/20" />
             Spike day
           </span>
-          <span>Avg active day: {formatCurrency(dailyAverage)}</span>
+          <span>Avg active day: {formatCurrencyPrecise(dailyAverage)}</span>
         </div>
       </div>
 
@@ -418,7 +416,7 @@ export default function HeatmapCalendar({
                     {format(selectedDay.date, "EEEE, MMMM d")}
                   </h4>
                   <p className="mt-1 text-sm text-zinc-500">
-                    Total outflow: {formatCurrency(selectedTotal)}
+                    Total outflow: {formatCurrencyPrecise(selectedTotal)}
                   </p>
                 </div>
 
@@ -428,12 +426,19 @@ export default function HeatmapCalendar({
                   onClick={() => {
                     setSelectedDay(null);
                     setEditingId(null);
+                    setDeleteError(null);
                   }}
                   className="flex h-9 w-9 items-center justify-center rounded-full border border-cardBorder bg-background text-zinc-400 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
+
+              {deleteError && (
+                <p className="mb-4 rounded-xl border border-neonCrimson/30 bg-neonCrimson/10 px-4 py-3 text-sm text-neonCrimson">
+                  {deleteError}
+                </p>
+              )}
 
               {selectedItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-cardBorder bg-background/60 px-6 py-10 text-center">
@@ -474,7 +479,7 @@ export default function HeatmapCalendar({
                                   : "text-zinc-100"
                               }`}
                             >
-                              {formatCurrency(item.amount)}
+                              {formatCurrencyPrecise(item.amount)}
                             </p>
                           </div>
 

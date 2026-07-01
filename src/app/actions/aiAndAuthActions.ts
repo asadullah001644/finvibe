@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { resolvePinHash } from "@/lib/pinHash";
 
 const SESSION_COOKIE = "finvibe_session";
 const SESSION_VALUE = "unlocked";
@@ -14,37 +15,23 @@ Analyze the user's salary, savings goal, category budgets, and spending totals. 
 Highlight the main leakage vectors and prescribe exactly 3 execution rules to recover the savings goal before month's end.
 Keep it highly concise. Format the entire response in clean Markdown with headings and bullet points.`;
 
-function getPinHash(): string | null {
-  const raw = process.env.APP_SECRET_PIN_HASH?.trim();
-
-  if (!raw) {
-    return null;
-  }
-
-  const hashedPin = raw.replace(/^['"]|['"]$/g, "");
-
-  // Bcrypt hashes always start with $2a$, $2b$, or $2y$
-  if (!/^\$2[aby]\$/.test(hashedPin)) {
-    console.error(
-      "APP_SECRET_PIN_HASH looks invalid. Escape every $ in .env.local, e.g. \\$2b\\$10\\$...",
-    );
-    return null;
-  }
-
-  return hashedPin;
-}
-
 async function hasUnlockedSession(): Promise<boolean> {
   const cookieStore = await cookies();
   return cookieStore.get(SESSION_COOKIE)?.value === SESSION_VALUE;
 }
 
 export async function verifyPin(inputPin: string): Promise<boolean> {
-  const hashedPin = getPinHash();
+  const { hash: hashedPin, error } = resolvePinHash();
 
   if (!hashedPin) {
+    if (error === "invalid") {
+      throw new Error(
+        "PIN hash misconfigured on server. On Vercel use APP_SECRET_PIN_HASH_B64 (recommended) or paste the raw bcrypt hash without backslash escapes, then redeploy.",
+      );
+    }
+
     throw new Error(
-      "Missing APP_SECRET_PIN_HASH environment variable. Define a bcrypt hash in .env.local.",
+      "PIN hash not configured on server. Add APP_SECRET_PIN_HASH or APP_SECRET_PIN_HASH_B64 in Vercel → Settings → Environment Variables (Production), then redeploy.",
     );
   }
 
@@ -172,7 +159,7 @@ export async function runFinancialAudit(
   const prompt = buildAuditPrompt(expenses, budget);
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.5-flash",
     systemInstruction: AUDIT_SYSTEM_INSTRUCTION,
   });
 

@@ -1,15 +1,19 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Cpu, Shield, Wallet } from "lucide-react";
 import AiAudit from "@/components/AiAudit";
 import AutoLockListener from "@/components/AutoLockListener";
-import BudgetSettings from "@/components/BudgetSettings";
+import CategoryAllocation from "@/components/CategoryAllocation";
 import BurnRateGraph from "@/components/BurnRateGraph";
 import CategoryTracker from "@/components/CategoryTracker";
 import HeatmapCalendar from "@/components/HeatmapCalendar";
+import IncomeSettings from "@/components/IncomeSettings";
 import LockButton from "@/components/LockButton";
 import QuickLogFAB from "@/components/QuickLogFAB";
+import { computeBudgetMetrics } from "@/lib/budgetMetrics";
+import { formatCurrency } from "@/lib/currency";
 import type { BudgetCategory } from "@/lib/types";
 
 interface SerializedExpense {
@@ -32,14 +36,6 @@ interface DashboardShellProps {
   expenses: SerializedExpense[];
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 function SetupHero({
   monthLabel,
   onSetup,
@@ -57,16 +53,16 @@ function SetupHero({
           Welcome to FinVibe
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          Set up your {monthLabel} budget first — salary, savings goal, and
-          category limits — then start logging expenses to see your burn rate
-          and heatmap.
+          Set your {monthLabel} salary and savings goal — takes 30 seconds.
+          Then start logging expenses. Category limits are optional and can
+          wait.
         </p>
         <button
           type="button"
           onClick={onSetup}
           className="mt-5 inline-flex items-center justify-center rounded-xl border border-neonViolet/40 bg-neonViolet/15 px-6 py-3 text-sm font-semibold text-neonViolet transition-colors hover:bg-neonViolet/25"
         >
-          Set Up {monthLabel} Budget
+          Set {monthLabel} Income
         </button>
       </div>
     </section>
@@ -82,17 +78,29 @@ function SummaryStrip({
   savingsGoal: number;
   totalSpent: number;
 }) {
-  const remaining = salary - totalSpent;
-  const spendable = salary - savingsGoal;
+  const metrics = computeBudgetMetrics(salary, savingsGoal, totalSpent);
+
+  const standardCards = [
+    { label: "Salary", value: metrics.salary, tone: "text-zinc-100" },
+    {
+      label: "Savings Goal",
+      value: metrics.savingsGoal,
+      tone: "text-zinc-300",
+    },
+    {
+      label: "Spend Limit",
+      value: metrics.spendLimit,
+      tone: "text-neonViolet",
+    },
+    { label: "Spent", value: metrics.totalSpent, tone: "text-neonCrimson" },
+  ];
+
+  const spendableTone =
+    metrics.spendableRemaining < 0 ? "text-neonCrimson" : "text-neonEmerald";
 
   return (
-    <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {[
-        { label: "Salary", value: salary, tone: "text-zinc-100" },
-        { label: "Spent", value: totalSpent, tone: "text-neonCrimson" },
-        { label: "Remaining", value: remaining, tone: "text-neonEmerald" },
-        { label: "Spend Limit", value: spendable, tone: "text-neonViolet" },
-      ].map((item) => (
+    <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+      {standardCards.map((item) => (
         <div
           key={item.label}
           className="rounded-xl border border-cardBorder bg-card/60 px-4 py-3"
@@ -105,6 +113,25 @@ function SummaryStrip({
           </p>
         </div>
       ))}
+
+      <div className="rounded-xl border border-neonEmerald/30 bg-neonEmerald/5 px-4 py-3 sm:col-span-1">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-neonEmerald/80">
+          Spendable Remaining
+        </p>
+        <p className={`mt-1 text-2xl font-bold ${spendableTone}`}>
+          {formatCurrency(metrics.spendableRemaining)}
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-cardBorder/60 bg-card/30 px-4 py-3 sm:col-span-1">
+        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-600">
+          Total Account Balance
+        </p>
+        <p className="mt-0.5 text-[10px] text-zinc-600">(incl. savings)</p>
+        <p className="mt-1 text-base font-medium text-zinc-500">
+          {formatCurrency(metrics.accountBalance)}
+        </p>
+      </div>
     </section>
   );
 }
@@ -115,10 +142,22 @@ export default function DashboardShell({
   budget,
   expenses,
 }: DashboardShellProps) {
-  const [budgetOpen, setBudgetOpen] = useState(false);
+  const router = useRouter();
+  const [incomeOpen, setIncomeOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+
+  const handleMonthChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    if (value) {
+      router.push(`/?month=${value}`);
+    }
+  };
 
   const categoryNames = budget.categories.map((category) => category.name);
   const hasBudgetMetrics = budget.totalSalary > 0 || budget.savingsGoal > 0;
+  const hasLimitsSet = budget.categories.some(
+    (category) => category.allocated > 0,
+  );
   const totalSpent = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   const graphExpenses = expenses.map((expense) => ({
@@ -157,35 +196,37 @@ export default function DashboardShell({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <BudgetSettings
+            <IncomeSettings
+              monthKey={currentMonthKey}
+              monthLabel={monthLabel}
+              totalSalary={budget.totalSalary}
+              savingsGoal={budget.savingsGoal}
+              isOpen={incomeOpen}
+              onOpenChange={setIncomeOpen}
+            />
+            <CategoryAllocation
               monthKey={currentMonthKey}
               monthLabel={monthLabel}
               totalSalary={budget.totalSalary}
               savingsGoal={budget.savingsGoal}
               categories={budget.categories}
-              isOpen={budgetOpen}
-              onOpenChange={setBudgetOpen}
+              isOpen={categoriesOpen}
+              onOpenChange={setCategoriesOpen}
+              hasLimitsSet={hasLimitsSet}
             />
             <LockButton />
 
-            <form action="/" method="get" className="flex items-center gap-2">
-              <label htmlFor="month" className="sr-only">
-                Select month
-              </label>
-              <input
-                id="month"
-                name="month"
-                type="month"
-                defaultValue={currentMonthKey}
-                className="rounded-xl border border-cardBorder bg-card px-3 py-2 text-sm text-zinc-200 outline-none transition-colors focus:border-neonViolet [color-scheme:dark]"
-              />
-              <button
-                type="submit"
-                className="rounded-xl border border-neonViolet/30 bg-neonViolet/10 px-4 py-2 text-sm font-medium text-neonViolet transition-colors hover:bg-neonViolet/20"
-              >
-                Go
-              </button>
-            </form>
+            <label htmlFor="month" className="sr-only">
+              Select month
+            </label>
+            <input
+              id="month"
+              name="month"
+              type="month"
+              value={currentMonthKey}
+              onChange={handleMonthChange}
+              className="rounded-xl border border-cardBorder bg-card px-3 py-2 text-sm text-zinc-200 outline-none transition-colors focus:border-neonViolet [color-scheme:dark]"
+            />
           </div>
         </div>
       </header>
@@ -194,7 +235,7 @@ export default function DashboardShell({
         {!hasBudgetMetrics ? (
           <SetupHero
             monthLabel={monthLabel}
-            onSetup={() => setBudgetOpen(true)}
+            onSetup={() => setIncomeOpen(true)}
           />
         ) : (
           <SummaryStrip
@@ -217,6 +258,7 @@ export default function DashboardShell({
               <CategoryTracker
                 categories={budget.categories}
                 expenses={auditExpenses}
+                onOpenCategories={() => setCategoriesOpen(true)}
               />
             )}
 

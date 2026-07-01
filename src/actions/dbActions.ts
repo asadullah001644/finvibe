@@ -1,8 +1,6 @@
-"use server";
-
 import { createClient } from "@/utils/supabase/server";
 import type { Budget, BudgetCategory, SerializedExpense } from "@/lib/types";
-import { DEFAULT_CATEGORIES } from "@/lib/constants";
+import { DEFAULT_CATEGORIES, mergeWithDefaultCategories } from "@/lib/constants";
 import { revalidatePath } from "next/cache";
 
 interface BudgetRow {
@@ -19,6 +17,22 @@ interface ExpenseRow {
   category: string;
   description: string | null;
   date: string;
+}
+
+interface BudgetPatchFields {
+  total_salary?: number;
+  savings_goal?: number;
+  categories?: BudgetCategory[];
+}
+
+interface BudgetInsertDefaults {
+  total_salary: number;
+  savings_goal: number;
+  categories: BudgetCategory[];
+}
+
+function isDuplicateKeyError(error: { code?: string } | null): boolean {
+  return error?.code === "23505";
 }
 
 function parseMonthKey(monthKey: string): { year: number; monthIndex: number } | null {
@@ -74,10 +88,7 @@ function mapBudgetRow(row: BudgetRow | null, monthKey: string): Budget {
     monthKey: row.month_key,
     totalSalary: Number(row.total_salary ?? 0),
     savingsGoal: Number(row.savings_goal ?? 0),
-    categories:
-      Array.isArray(row.categories) && row.categories.length > 0
-        ? row.categories
-        : DEFAULT_CATEGORIES,
+    categories: mergeWithDefaultCategories(row.categories),
   };
 }
 
@@ -102,7 +113,7 @@ export async function getBudget(monthKey: string): Promise<Budget | null> {
 
   if (error) {
     console.error("Error fetching budget:", error);
-    return null;
+    throw new Error(error.message);
   }
 
   return data ? mapBudgetRow(data as BudgetRow, monthKey) : null;
@@ -129,54 +140,114 @@ export async function getOrCreateMonthlyBudget(monthKey: string): Promise<Budget
     .single();
 
   if (error) {
+    // Another request may have created the row first.
+    if (error.code === "23505") {
+      const raced = await getBudget(monthKey);
+      if (raced) {
+        return raced;
+      }
+    }
+
     console.error("Error creating budget:", error);
-    return mapBudgetRow(null, monthKey);
+    throw new Error(error.message);
   }
 
   return mapBudgetRow(data as BudgetRow, monthKey);
 }
 
-export async function updateBudget(
+async function patchBudgetRow(
   monthKey: string,
-  totalSalary: number,
-  savingsGoal: number,
-  categories: BudgetCategory[],
+  fields: BudgetPatchFields,
+  insertDefaults: BudgetInsertDefaults,
 ) {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("budgets")
-    .upsert(
-      {
-        month_key: monthKey,
-        total_salary: totalSalary,
-        savings_goal: savingsGoal,
-        categories,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "month_key" },
-    )
-    .select();
+  const applyUpdate = async () => {
+    const { error } = await supabase
+      .from("budgets")
+      .update(fields)
+      .eq("month_key", monthKey);
 
-  if (error) {
-    throw new Error(error.message);
+    if (error) {
+      throw new Error(error.message);
+    }
+  };
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("budgets")
+    .select("month_key")
+    .eq("month_key", monthKey)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw new Error(fetchError.message);
+  }
+
+  if (existing) {
+    await applyUpdate();
+  } else {
+    const { error } = await supabase.from("budgets").insert({
+      month_key: monthKey,
+      ...insertDefaults,
+      ...fields,
+    });
+
+    if (error) {
+      if (isDuplicateKeyError(error)) {
+        await applyUpdate();
+      } else {
+        throw new Error(error.message);
+      }
+    }
   }
 
   revalidatePath("/");
-  return data;
+}
+
+export async function updateBudgetIncome(
+  monthKey: string,
+  totalSalary: number,
+  savingsGoal: number,
+) {
+  await patchBudgetRow(
+    monthKey,
+    { total_salary: totalSalary, savings_goal: savingsGoal },
+    {
+      total_salary: totalSalary,
+      savings_goal: savingsGoal,
+      categories: DEFAULT_CATEGORIES,
+    },
+  );
+}
+
+export async function updateCategoryAllocations(
+  monthKey: string,
+  categories: BudgetCategory[],
+) {
+  const existing = await getBudget(monthKey);
+
+  await patchBudgetRow(
+    monthKey,
+    { categories },
+    {
+      total_salary: existing?.totalSalary ?? 0,
+      savings_goal: existing?.savingsGoal ?? 0,
+      categories,
+    },
+  );
 }
 
 export async function addExpense(
   amount: number,
   category: string,
   description: string,
-  dateIsoString: string,
+  date: string,
 ) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("expenses")
-    .insert([{ amount, category, description, date: dateIsoString }])
+    .insert({ amount, category, description, date })
     .select();
 
   if (error) {
@@ -192,18 +263,22 @@ export async function updateExpense(
   amount: number,
   category: string,
   description: string,
-  dateIsoString: string,
+  date: string,
 ) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("expenses")
-    .update({ amount, category, description, date: dateIsoString })
+    .update({ amount, category, description, date })
     .eq("id", id)
     .select();
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error("Expense not found.");
   }
 
   revalidatePath("/");
@@ -213,10 +288,18 @@ export async function updateExpense(
 export async function deleteExpense(id: string) {
   const supabase = await createClient();
 
-  const { error } = await supabase.from("expenses").delete().eq("id", id);
+  const { data, error } = await supabase
+    .from("expenses")
+    .delete()
+    .eq("id", id)
+    .select("id");
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error("Expense not found.");
   }
 
   revalidatePath("/");
@@ -258,7 +341,7 @@ export async function getExpensesForMonth(
 
   if (error) {
     console.error("Error fetching month expenses:", error);
-    return [];
+    throw new Error(error.message);
   }
 
   return (data as ExpenseRow[]).map(mapExpenseRow);
