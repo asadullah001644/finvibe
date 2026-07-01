@@ -8,10 +8,16 @@
   "theme_color": "#09090B",
   "icons": [
     {
-      "src": "https://img.icons8.com/neon/512/experimental-wallet-neon.png",
+      "src": "/icon.svg",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }
