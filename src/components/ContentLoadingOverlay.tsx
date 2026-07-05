@@ -4,24 +4,22 @@ import { Loader2 } from "lucide-react";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 
 export default function ContentLoadingOverlay() {
-  const { isNavigating, isRefreshing } = useAppNavigation();
+  const { isNavigating } = useAppNavigation();
 
   if (!isNavigating) {
     return null;
   }
 
-  const label = isRefreshing ? "Updating" : "Loading";
-
   return (
     <div
       role="status"
       aria-live="polite"
-      aria-label={label}
-      className="absolute inset-0 z-20 flex items-start justify-center bg-[#09090B]/60 pt-24 backdrop-blur-[1px]"
+      aria-label="Loading page"
+      className="absolute inset-0 z-20 flex min-h-[50vh] items-start justify-center bg-[#09090B] pt-24"
     >
-      <div className="flex items-center gap-2 rounded-full border border-cardBorder/80 bg-card/90 px-4 py-2 shadow-lg">
+      <div className="flex items-center gap-2 rounded-full border border-cardBorder/80 bg-card px-4 py-2 shadow-lg">
         <Loader2 className="h-4 w-4 animate-spin text-neonViolet" />
-        <span className="text-sm text-zinc-400">{label}</span>
+        <span className="text-sm text-zinc-400">Loading</span>
       </div>
     </div>
   );

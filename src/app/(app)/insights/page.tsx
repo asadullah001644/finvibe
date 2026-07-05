@@ -1,6 +1,7 @@
 import { MonthDataSync } from "@/components/AppShellProvider";
 import ExpenseContentSuspense from "@/components/ExpenseContentSuspense";
 import InsightsContentLoader from "@/components/loaders/InsightsContentLoader";
+import NavigationContentReady from "@/components/NavigationContentReady";
 import {
   AuthGate,
   getAuthenticatedShellData,
@@ -34,12 +35,15 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
             <InsightsContentLoader monthKey={monthKey} budget={budget} />
           </ExpenseContentSuspense>
         ) : (
-          <section className="rounded-2xl border border-dashed border-cardBorder bg-card/40 px-6 py-10 text-center">
-            <p className="text-sm text-zinc-400">
-              Set your income on the Overview page to unlock burn-rate telemetry
-              and AI capital audits.
-            </p>
-          </section>
+          <>
+            <section className="rounded-2xl border border-dashed border-cardBorder bg-card/40 px-6 py-10 text-center">
+              <p className="text-sm text-zinc-400">
+                Set your income on the Overview page to unlock burn-rate telemetry
+                and AI capital audits.
+              </p>
+            </section>
+            <NavigationContentReady />
+          </>
         )}
       </MonthDataSync>
     </AuthGate>

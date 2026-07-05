@@ -20,6 +20,7 @@ import {
   getChildCategoryName,
 } from "@/lib/constants";
 import { formatCurrencyPrecise } from "@/lib/currency";
+import { compareExpensesByRecency } from "@/lib/expenseSort";
 import { monthKeyToDate } from "@/lib/month";
 
 interface HeatmapExpense {
@@ -28,6 +29,7 @@ interface HeatmapExpense {
   category: string;
   description: string;
   date: Date;
+  createdAt?: Date;
 }
 
 interface HeatmapCalendarProps {
@@ -113,11 +115,7 @@ function buildMonthGrid(currentMonth: Date, expenseMap: Map<string, HeatmapExpen
       dayNumber: day.getDate(),
       total,
       isOutlier,
-      items: items.sort(
-        (a, b) =>
-          normalizeExpenseDate(b.date).getTime() -
-          normalizeExpenseDate(a.date).getTime(),
-      ),
+      items: items.sort(compareExpensesByRecency),
     });
   });
 

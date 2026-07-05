@@ -17,7 +17,7 @@ interface NavigationContextValue {
   refresh: () => Promise<void>;
   isNavigating: boolean;
   isRefreshing: boolean;
-  setDeferredLoading: (loading: boolean) => void;
+  markContentReady: () => void;
 }
 
 const NavigationContext = createContext<NavigationContextValue | null>(null);
@@ -43,23 +43,17 @@ export default function NavigationLoadingProvider({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
+  const [isRoutePending, startRouteTransition] = useTransition();
+  const [isRefreshPending, startRefreshTransition] = useTransition();
   const [isNavigating, setIsNavigating] = useState(false);
-  const [deferredLoadingCount, setDeferredLoadingCount] = useState(0);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const targetHrefRef = useRef<string | null>(null);
   const refreshResolveRef = useRef<(() => void) | null>(null);
-
-  const setDeferredLoading = useCallback((loading: boolean) => {
-    setDeferredLoadingCount((count) =>
-      loading ? count + 1 : Math.max(0, count - 1),
-    );
-  }, []);
+  const contentPendingRef = useRef(false);
 
   const locationKey = buildLocationKey(pathname, searchParams);
 
-  useEffect(() => {
-    if (!isNavigating || !targetHrefRef.current) {
+  const tryFinishNavigation = useCallback(() => {
+    if (!isNavigating || !targetHrefRef.current || contentPendingRef.current) {
       return;
     }
 
@@ -70,31 +64,39 @@ export default function NavigationLoadingProvider({
     const targetParams = new URLSearchParams(targetQuery);
     const targetKey = buildLocationKey(targetPath, targetParams);
 
-    if (locationKey === targetKey && !isPending) {
+    if (locationKey === targetKey && !isRoutePending) {
       setIsNavigating(false);
       targetHrefRef.current = null;
     }
-  }, [isNavigating, isPending, locationKey]);
+  }, [isNavigating, isRoutePending, locationKey]);
+
+  const markContentReady = useCallback(() => {
+    if (!contentPendingRef.current) {
+      return;
+    }
+
+    contentPendingRef.current = false;
+    tryFinishNavigation();
+  }, [tryFinishNavigation]);
 
   useEffect(() => {
-    if (isPending || !refreshResolveRef.current) {
+    tryFinishNavigation();
+  }, [tryFinishNavigation]);
+
+  useEffect(() => {
+    if (isRefreshPending || !refreshResolveRef.current) {
       return;
     }
 
     refreshResolveRef.current();
     refreshResolveRef.current = null;
-  }, [isPending]);
+  }, [isRefreshPending]);
 
   const refresh = useCallback(() => {
-    setIsRefreshing(true);
-
     return new Promise<void>((resolve) => {
-      refreshResolveRef.current = () => {
-        setIsRefreshing(false);
-        resolve();
-      };
+      refreshResolveRef.current = resolve;
 
-      startTransition(() => {
+      startRefreshTransition(() => {
         router.refresh();
       });
     });
@@ -107,26 +109,26 @@ export default function NavigationLoadingProvider({
       }
 
       targetHrefRef.current = href;
+      contentPendingRef.current = true;
       setIsNavigating(true);
 
-      startTransition(() => {
+      startRouteTransition(() => {
         router.push(href);
       });
     },
     [locationKey, router],
   );
 
-  const showOverlay =
-    isNavigating || isPending || deferredLoadingCount > 0;
+  const showRouteOverlay = isNavigating || isRoutePending;
 
   return (
     <NavigationContext.Provider
       value={{
         navigate,
         refresh,
-        isNavigating: showOverlay,
-        isRefreshing,
-        setDeferredLoading,
+        isNavigating: showRouteOverlay,
+        isRefreshing: isRefreshPending,
+        markContentReady,
       }}
     >
       {children}

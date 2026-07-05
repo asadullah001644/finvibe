@@ -18,6 +18,7 @@ import {
   resolveCategoryHint,
 } from "@/lib/constants";
 import { formatCurrency, formatCurrencyPrecise } from "@/lib/currency";
+import { compareExpensesByRecency } from "@/lib/expenseSort";
 import { buildCategoriesUrl } from "@/lib/navigation";
 
 export type CategoryFilterGroup = "all" | "Home" | "Flat" | "General";
@@ -35,6 +36,7 @@ interface ExplorerExpense {
   category: string;
   description: string;
   date: Date;
+  createdAt?: Date;
 }
 
 interface CategoryExplorerProps {
@@ -539,11 +541,7 @@ export default function CategoryExplorer({
       .filter((expense) =>
         expenseMatchesFilter(expense, appliedGroup, appliedCategories),
       )
-      .sort(
-        (left, right) =>
-          normalizeExpenseDate(right.date).getTime() -
-          normalizeExpenseDate(left.date).getTime(),
-      );
+      .sort(compareExpensesByRecency);
   }, [appliedCategories, appliedGroup, expenses]);
 
   const totalSpent = filteredExpenses.reduce(

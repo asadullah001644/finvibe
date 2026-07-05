@@ -29,6 +29,7 @@ export interface SerializedExpense {
   category: string;
   description: string;
   date: Date;
+  createdAt?: Date;
 }
 
 export interface RecurringExpense {

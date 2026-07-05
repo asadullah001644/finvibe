@@ -26,6 +26,7 @@ interface ExpenseRow {
   category: string;
   description: string | null;
   date: string;
+  created_at?: string;
   recurring_expense_id?: string | null;
 }
 
@@ -133,7 +134,7 @@ function getMonthDateRange(monthKey: string): { start: string; end: string } | n
 }
 
 const BUDGET_COLUMNS = "month_key, total_salary, savings_goal, categories";
-const EXPENSE_COLUMNS = "id, amount, category, description, date";
+const EXPENSE_COLUMNS = "id, amount, category, description, date, created_at";
 const RECURRING_SEED_COLUMNS = "id, amount, category, description";
 
 function mapBudgetRow(row: BudgetRow | null, monthKey: string): Budget {
@@ -161,6 +162,7 @@ function mapExpenseRow(row: ExpenseRow): SerializedExpense {
     category: row.category ?? "General",
     description: row.description ?? "",
     date: new Date(row.date),
+    createdAt: row.created_at ? new Date(row.created_at) : undefined,
   };
 }
 
@@ -441,7 +443,8 @@ export async function getExpenses(): Promise<SerializedExpense[]> {
   const { data, error } = await supabase
     .from("expenses")
     .select("*")
-    .order("date", { ascending: false });
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Error fetching expenses:", error);
@@ -467,7 +470,8 @@ export async function getExpensesForMonth(
     .select(EXPENSE_COLUMNS)
     .gte("date", range.start)
     .lte("date", range.end)
-    .order("date", { ascending: false });
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Error fetching month expenses:", error);

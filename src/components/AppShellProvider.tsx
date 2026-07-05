@@ -14,8 +14,9 @@ import AppHeader from "@/components/AppHeader";
 import AutoLockListener from "@/components/AutoLockListener";
 import CarryForwardNotice from "@/components/CarryForwardNotice";
 import ContentLoadingOverlay from "@/components/ContentLoadingOverlay";
-import ContentRefreshSkeleton from "@/components/ContentRefreshSkeleton";
+import ContentSubtleRefresh from "@/components/ContentSubtleRefresh";
 import QuickLogFAB from "@/components/QuickLogFAB";
+import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import type { AppTab } from "@/lib/navigation";
 import type { BudgetCategory } from "@/lib/types";
 
@@ -88,6 +89,22 @@ export function ClearAppShell() {
   }, [control]);
 
   return null;
+}
+
+function AppShellContent({ children }: { children: ReactNode }) {
+  const { isNavigating } = useAppNavigation();
+
+  return (
+    <div className="relative min-h-[calc(100vh-12rem)]">
+      <ContentLoadingOverlay />
+      <div
+        aria-hidden={isNavigating}
+        className={isNavigating ? "invisible" : undefined}
+      >
+        <ContentSubtleRefresh>{children}</ContentSubtleRefresh>
+      </div>
+    </div>
+  );
 }
 
 export default function AppShellProvider({ children }: { children: ReactNode }) {
@@ -165,9 +182,7 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
           />
 
           <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-8 pb-24">
-            <ContentLoadingOverlay />
-            <ContentRefreshSkeleton />
-            {children}
+            <AppShellContent>{children}</AppShellContent>
           </div>
 
           {monthData.carriedFromMonthLabel && (
