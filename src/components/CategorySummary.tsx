@@ -104,7 +104,7 @@ export default function CategorySummary({
   }
 
   return (
-    <section className="rounded-2xl border border-cardBorder bg-card/60 p-4 sm:p-5">
+    <section className="relative w-full rounded-2xl border border-cardBorder bg-card/60 p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonEmerald/80">

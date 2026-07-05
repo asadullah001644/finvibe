@@ -41,9 +41,9 @@ export default function OverviewContent({
   }));
 
   return (
-    <>
+    <div className="grid gap-6">
       {!hasBudgetMetrics ? (
-        <SetupHero monthLabel={monthLabel} onSetup={openIncome} />
+        <SetupHero onSetup={openIncome} />
       ) : (
         <SummaryStrip
           salary={budget.totalSalary}
@@ -60,6 +60,6 @@ export default function OverviewContent({
           onOpenCategories={openCategories}
         />
       )}
-    </>
+    </div>
   );
 }

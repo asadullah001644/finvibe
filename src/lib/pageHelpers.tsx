@@ -4,6 +4,7 @@ import PinUnlock from "@/components/PinUnlock";
 import { getProfileOrDefault, getSessionUser, isSuperAdmin } from "@/lib/auth";
 import { resolveMonthKey } from "@/lib/month";
 import { loadMonthShellData } from "@/lib/loadMonthData";
+import { resolveDisplayName } from "@/lib/profileDisplay";
 import { isPinSessionValid } from "@/lib/pinSession";
 import type { Profile } from "@/lib/types";
 import { redirect } from "next/navigation";
@@ -61,6 +62,8 @@ export type ShellGateState =
   | {
       state: "ready";
       userId: string;
+      userDisplayName: string;
+      userEmail: string;
       monthKey: string;
       monthLabel: string;
       carriedFromMonthLabel?: string;
@@ -84,6 +87,8 @@ export async function getAuthenticatedShellData(
   return {
     state: "ready",
     userId: gate.userId,
+    userDisplayName: resolveDisplayName(gate.profile, gate.user.email),
+    userEmail: gate.profile.email || gate.user.email || "",
     ...data,
     isSuperAdmin: gate.isSuperAdmin,
     pinLockEnabled: gate.pinLockEnabled,
@@ -106,11 +111,11 @@ export function AuthGate({
     );
   }
 
+  const pinLockEnabled =
+    "pinLockEnabled" in gateState ? gateState.pinLockEnabled : false;
+
   return (
-    <PinTabGate
-      userId={gateState.userId}
-      pinLockEnabled={gateState.pinLockEnabled}
-    >
+    <PinTabGate userId={gateState.userId} pinLockEnabled={pinLockEnabled}>
       {children}
     </PinTabGate>
   );

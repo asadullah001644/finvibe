@@ -45,6 +45,7 @@ export type UserRole = "user" | "super_admin";
 export interface Profile {
   id: string;
   email: string;
+  displayName: string | null;
   role: UserRole;
   isDisabled: boolean;
   appPinHash: string | null;

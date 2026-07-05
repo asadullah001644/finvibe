@@ -10,6 +10,7 @@ import type { User } from "@supabase/supabase-js";
 interface ProfileRow {
   id: string;
   email: string;
+  display_name: string | null;
   role: UserRole;
   is_disabled: boolean;
   app_pin_hash: string | null;
@@ -18,10 +19,21 @@ interface ProfileRow {
   updated_at: string;
 }
 
+const PROFILE_COLUMNS =
+  "id, email, display_name, role, is_disabled, app_pin_hash, currency, created_at, updated_at";
+
+const PROFILE_COLUMNS_LEGACY =
+  "id, email, role, is_disabled, app_pin_hash, currency, created_at, updated_at";
+
+function isDisplayNameColumnMissingError(error: { message?: string }): boolean {
+  return (error.message ?? "").toLowerCase().includes("display_name");
+}
+
 function mapProfile(row: ProfileRow): Profile {
   return {
     id: row.id,
     email: row.email,
+    displayName: row.display_name,
     role: row.role,
     isDisabled: row.is_disabled,
     appPinHash: row.app_pin_hash,
@@ -29,6 +41,13 @@ function mapProfile(row: ProfileRow): Profile {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function mapProfileRow(row: ProfileRow | Omit<ProfileRow, "display_name">): Profile {
+  return mapProfile({
+    ...(row as ProfileRow),
+    display_name: "display_name" in row ? row.display_name : null,
+  });
 }
 
 function isProfilesTableMissingError(error: { code?: string; message?: string }): boolean {
@@ -53,6 +72,7 @@ function buildSyntheticProfile(user: User): Profile {
   return {
     id: user.id,
     email: user.email ?? "",
+    displayName: null,
     role: isSuperAdminEmail(user.email ?? "") ? "super_admin" : "user",
     isDisabled: false,
     appPinHash: null,
@@ -72,13 +92,19 @@ export const getSessionUser = getSessionUserImpl;
 const getProfileImpl = cache(async (userId: string): Promise<Profile | null> => {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("profiles")
-    .select(
-      "id, email, role, is_disabled, app_pin_hash, currency, created_at, updated_at",
-    )
+    .select(PROFILE_COLUMNS)
     .eq("id", userId)
     .maybeSingle();
+
+  if (error && isDisplayNameColumnMissingError(error)) {
+    ({ data, error } = await supabase
+      .from("profiles")
+      .select(PROFILE_COLUMNS_LEGACY)
+      .eq("id", userId)
+      .maybeSingle());
+  }
 
   if (error) {
     if (isProfilesTableMissingError(error)) {
@@ -87,7 +113,7 @@ const getProfileImpl = cache(async (userId: string): Promise<Profile | null> => 
     throw new Error(error.message);
   }
 
-  return data ? mapProfile(data as ProfileRow) : null;
+  return data ? mapProfileRow(data as ProfileRow) : null;
 });
 
 export async function getProfile(userId?: string): Promise<Profile | null> {
@@ -110,7 +136,7 @@ export const getProfileOrDefault = cache(async (user: User): Promise<Profile> =>
   const supabase = await createClient();
   const role: UserRole = isSuperAdminEmail(user.email ?? "") ? "super_admin" : "user";
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("profiles")
     .upsert(
       {
@@ -120,10 +146,23 @@ export const getProfileOrDefault = cache(async (user: User): Promise<Profile> =>
       },
       { onConflict: "id" },
     )
-    .select(
-      "id, email, role, is_disabled, app_pin_hash, currency, created_at, updated_at",
-    )
+    .select(PROFILE_COLUMNS)
     .single();
+
+  if (error && isDisplayNameColumnMissingError(error)) {
+    ({ data, error } = await supabase
+      .from("profiles")
+      .upsert(
+        {
+          id: user.id,
+          email: user.email ?? "",
+          role,
+        },
+        { onConflict: "id" },
+      )
+      .select(PROFILE_COLUMNS_LEGACY)
+      .single());
+  }
 
   if (error) {
     if (isProfilesTableMissingError(error)) {
@@ -132,7 +171,7 @@ export const getProfileOrDefault = cache(async (user: User): Promise<Profile> =>
     throw new Error(error.message);
   }
 
-  return mapProfile(data as ProfileRow);
+  return mapProfileRow(data as ProfileRow);
 });
 
 const getProfilesTableReadyCached = unstable_cache(

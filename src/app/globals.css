@@ -24,3 +24,38 @@ body {
   color: #8B5CF6;
   background-color: rgba(139, 92, 246, 0.2);
 }
+
+@layer base {
+  @media (hover: hover) and (pointer: fine) {
+    a[href],
+    button:not(:disabled),
+    label[for],
+    label:has(input, select, textarea),
+    select:not(:disabled),
+    summary,
+    [role="button"]:not([aria-disabled="true"]),
+    [role="link"],
+    [role="tab"]:not([aria-disabled="true"]),
+    [role="menuitem"]:not([aria-disabled="true"]) {
+      cursor: pointer;
+    }
+
+    button:disabled,
+    select:disabled,
+    [aria-disabled="true"] {
+      cursor: not-allowed;
+    }
+
+    input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+    textarea {
+      cursor: text;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"],
+    input[type="range"],
+    input[type="file"] {
+      cursor: pointer;
+    }
+  }
+}

@@ -17,7 +17,16 @@ export default async function OverviewPage({ searchParams }: OverviewPageProps) 
     return <AuthGate gateState={shellData}>{null}</AuthGate>;
   }
 
-  const { monthKey, monthLabel, budget, carriedFromMonthLabel, pinLockEnabled } = shellData;
+  const {
+    monthKey,
+    monthLabel,
+    budget,
+    carriedFromMonthLabel,
+    pinLockEnabled,
+    userDisplayName,
+    userEmail,
+    isSuperAdmin,
+  } = shellData;
 
   return (
     <AuthGate gateState={shellData}>
@@ -28,6 +37,9 @@ export default async function OverviewPage({ searchParams }: OverviewPageProps) 
         carriedFromMonthLabel={carriedFromMonthLabel}
         budget={budget}
         pinLockEnabled={pinLockEnabled}
+        userDisplayName={userDisplayName}
+        userEmail={userEmail}
+        isSuperAdmin={isSuperAdmin}
       >
         <ExpenseContentSuspense>
           <OverviewContentLoader

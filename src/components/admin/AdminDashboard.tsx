@@ -9,6 +9,7 @@ import {
   getAdminUsersAction,
   type AdminUserRow,
 } from "@/actions/adminActions";
+import { resolveDisplayName } from "@/lib/profileDisplay";
 
 interface AdminDashboardProps {
   initialUsers: AdminUserRow[];
@@ -38,6 +39,13 @@ function AdminSelectChevron() {
 
 function formatRole(role: AdminUserRow["role"]): string {
   return role === "super_admin" ? "Super admin" : "User";
+}
+
+function formatUserLabel(user: AdminUserRow): string {
+  return resolveDisplayName({
+    displayName: user.displayName,
+    email: user.email,
+  });
 }
 
 function UserStatusBadge({ isDisabled }: { isDisabled: boolean }) {
@@ -98,7 +106,7 @@ function UserActions({ user, schemaReady, pending, onRunAction }: UserActionsPro
           onClick={() => {
             if (
               window.confirm(
-                `Delete ${user.email}? This removes all their financial data.`,
+                `Delete ${formatUserLabel(user)} (${user.email})? This removes all their financial data.`,
               )
             ) {
               onRunAction(() => deleteUserAction(user.id), "User deleted.");
@@ -173,12 +181,12 @@ export default function AdminDashboard({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-[minmax(0,1fr)_9.5rem_9.5rem_auto] md:items-end">
             <label className="block min-w-0 sm:col-span-2 md:col-span-1">
               <span className="mb-1 block text-xs uppercase tracking-wider text-zinc-400">
-                Search email
+                Search name or email
               </span>
               <input
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="Filter by email"
+                placeholder="Filter by name or email"
                 className="h-10 w-full rounded-xl border border-[#27272A] bg-[#09090B] px-3 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-colors focus:border-[#8B5CF6]/40"
               />
             </label>
@@ -260,7 +268,10 @@ export default function AdminDashboard({
                   >
                     <div className="space-y-3">
                       <div className="min-w-0">
-                        <p className="break-all text-sm font-medium text-zinc-100">{user.email}</p>
+                        <p className="truncate text-sm font-medium text-zinc-100">
+                          {formatUserLabel(user)}
+                        </p>
+                        <p className="mt-1 break-all text-xs text-zinc-500">{user.email}</p>
                         <p className="mt-1 text-xs text-zinc-500">
                           Joined {new Date(user.createdAt).toLocaleDateString()}
                         </p>
@@ -286,7 +297,7 @@ export default function AdminDashboard({
                 <table className="min-w-full text-left text-sm">
                   <thead className="border-b border-[#27272A] text-zinc-400">
                     <tr>
-                      <th className="px-4 py-3 font-medium">Email</th>
+                      <th className="px-4 py-3 font-medium">User</th>
                       <th className="px-4 py-3 font-medium">Role</th>
                       <th className="px-4 py-3 font-medium">Status</th>
                       <th className="px-4 py-3 font-medium">Joined</th>
@@ -296,7 +307,10 @@ export default function AdminDashboard({
                   <tbody>
                     {users.map((user) => (
                       <tr key={user.id} className="border-b border-[#27272A]/70">
-                        <td className="max-w-xs truncate px-4 py-3">{user.email}</td>
+                        <td className="max-w-xs px-4 py-3">
+                          <p className="truncate font-medium text-zinc-100">{formatUserLabel(user)}</p>
+                          <p className="truncate text-xs text-zinc-500">{user.email}</p>
+                        </td>
                         <td className="px-4 py-3">{formatRole(user.role)}</td>
                         <td className="px-4 py-3">
                           <UserStatusBadge isDisabled={user.isDisabled} />

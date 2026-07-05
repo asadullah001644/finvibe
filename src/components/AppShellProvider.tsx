@@ -6,10 +6,13 @@ import {
   useContext,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
+  Suspense,
   type ReactNode,
 } from "react";
 import AppBottomNav from "@/components/AppBottomNav";
+import AppDesktopSidebar from "@/components/AppDesktopSidebar";
 import AppHeader from "@/components/AppHeader";
 import CarryForwardNotice from "@/components/CarryForwardNotice";
 import ContentLoadingOverlay from "@/components/ContentLoadingOverlay";
@@ -33,6 +36,9 @@ export interface AppShellMonthData {
   carriedFromMonthLabel?: string;
   budget: AppShellBudget;
   pinLockEnabled?: boolean;
+  userDisplayName: string;
+  userEmail: string;
+  isSuperAdmin: boolean;
 }
 
 interface AppShellActions {
@@ -70,7 +76,10 @@ function monthDataEquals(
     current.budget.totalSalary !== next.budget.totalSalary ||
     current.budget.savingsGoal !== next.budget.savingsGoal ||
     current.budget.categories.length !== next.budget.categories.length ||
-    current.pinLockEnabled !== next.pinLockEnabled
+    current.pinLockEnabled !== next.pinLockEnabled ||
+    current.userDisplayName !== next.userDisplayName ||
+    current.userEmail !== next.userEmail ||
+    current.isSuperAdmin !== next.isSuperAdmin
   ) {
     return false;
   }
@@ -84,8 +93,14 @@ function monthDataEquals(
 
 export function ClearAppShell() {
   const control = useContext(AppShellControlContext);
+  const clearedRef = useRef(false);
 
   useLayoutEffect(() => {
+    if (clearedRef.current) {
+      return;
+    }
+
+    clearedRef.current = true;
     control?.clearMonthData();
   }, [control]);
 
@@ -124,7 +139,12 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
   }, []);
 
   const clearMonthData = useCallback(() => {
-    setMonthData(null);
+    setMonthData((current) => {
+      if (current === null) {
+        return current;
+      }
+      return null;
+    });
     setIncomeOpen(false);
     setCategoriesOpen(false);
     setRecurringOpen(false);
@@ -148,52 +168,75 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
   const hasLimitsSet =
     monthData?.budget.categories.some((category) => category.allocated > 0) ??
     false;
-
-  if (!monthData) {
-    return (
-      <AppShellControlContext.Provider value={controlValue}>
-        <AppShellActionsContext.Provider value={actions}>
-          {children}
-        </AppShellActionsContext.Provider>
-      </AppShellControlContext.Provider>
-    );
-  }
+  const shellReady = monthData !== null;
 
   return (
     <AppShellControlContext.Provider value={controlValue}>
       <AppShellActionsContext.Provider value={actions}>
-        <main className="relative min-h-screen overflow-x-hidden bg-[#09090B] pb-32 text-zinc-100 selection:bg-[#8B5CF6]/30">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.12),transparent_70%)]" />
-
-          <AppHeader
-            currentMonthKey={monthData.monthKey}
-            monthLabel={monthData.monthLabel}
-            carriedFromMonthLabel={monthData.carriedFromMonthLabel}
-            budget={monthData.budget}
-            hasLimitsSet={hasLimitsSet}
-            incomeOpen={incomeOpen}
-            categoriesOpen={categoriesOpen}
-            recurringOpen={recurringOpen}
-            onIncomeOpenChange={setIncomeOpen}
-            onCategoriesOpenChange={setCategoriesOpen}
-            onRecurringOpenChange={setRecurringOpen}
-            pinLockEnabled={monthData.pinLockEnabled ?? false}
-          />
-
-          <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-8 pb-24">
-            <AppShellContent>{children}</AppShellContent>
-          </div>
-
-          {monthData.carriedFromMonthLabel && (
-            <CarryForwardNotice
-              carriedFromMonthLabel={monthData.carriedFromMonthLabel}
-            />
+        <div
+          className={`relative min-h-screen overflow-x-hidden bg-[#09090B] text-zinc-100 selection:bg-[#8B5CF6]/30 ${
+            shellReady ? "pb-32 lg:flex lg:pb-0" : ""
+          }`}
+        >
+          {shellReady && (
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.12),transparent_70%)]" />
           )}
 
-          <QuickLogFAB customCategories={categoryNames}>
-            <AppBottomNav />
-          </QuickLogFAB>
-        </main>
+          {shellReady && monthData && (
+            <Suspense fallback={null}>
+              <AppDesktopSidebar
+                userDisplayName={monthData.userDisplayName}
+                userEmail={monthData.userEmail}
+                isSuperAdmin={monthData.isSuperAdmin}
+              />
+            </Suspense>
+          )}
+
+          <div className={`relative min-w-0 ${shellReady ? "flex-1" : ""}`}>
+            {shellReady && monthData && (
+              <AppHeader
+                currentMonthKey={monthData.monthKey}
+                monthLabel={monthData.monthLabel}
+                carriedFromMonthLabel={monthData.carriedFromMonthLabel}
+                userDisplayName={monthData.userDisplayName}
+                userEmail={monthData.userEmail}
+                budget={monthData.budget}
+                hasLimitsSet={hasLimitsSet}
+                incomeOpen={incomeOpen}
+                categoriesOpen={categoriesOpen}
+                recurringOpen={recurringOpen}
+                onIncomeOpenChange={setIncomeOpen}
+                onCategoriesOpenChange={setCategoriesOpen}
+                onRecurringOpenChange={setRecurringOpen}
+                pinLockEnabled={monthData.pinLockEnabled ?? false}
+              />
+            )}
+
+            <div
+              className={
+                shellReady
+                  ? "relative mx-auto max-w-[1600px] space-y-6 px-4 py-6 pb-24 lg:px-8 lg:py-8 lg:pb-10"
+                  : undefined
+              }
+            >
+              <AppShellContent>{children}</AppShellContent>
+            </div>
+
+            {shellReady && monthData?.carriedFromMonthLabel && (
+              <CarryForwardNotice
+                carriedFromMonthLabel={monthData.carriedFromMonthLabel}
+              />
+            )}
+
+            {shellReady && monthData && (
+              <QuickLogFAB customCategories={categoryNames}>
+                <div className="lg:hidden">
+                  <AppBottomNav />
+                </div>
+              </QuickLogFAB>
+            )}
+          </div>
+        </div>
       </AppShellActionsContext.Provider>
     </AppShellControlContext.Provider>
   );
@@ -211,16 +254,40 @@ export function MonthDataSync({
   carriedFromMonthLabel,
   budget,
   pinLockEnabled = false,
+  userDisplayName,
+  userEmail,
+  isSuperAdmin,
   children,
 }: MonthDataSyncProps) {
   const control = useContext(AppShellControlContext);
   const { markContentReady } = useAppNavigation();
+  const syncedKeyRef = useRef<string | null>(null);
 
   const categoriesKey = budget.categories
     .map((category) => `${category.name}:${category.allocated}`)
     .join("|");
 
+  const syncKey = [
+    activeTab,
+    monthKey,
+    monthLabel,
+    carriedFromMonthLabel ?? "",
+    budget.monthKey,
+    budget.totalSalary,
+    budget.savingsGoal,
+    categoriesKey,
+    pinLockEnabled,
+    userDisplayName,
+    userEmail,
+    isSuperAdmin,
+  ].join("|");
+
   useLayoutEffect(() => {
+    if (syncedKeyRef.current === syncKey) {
+      return;
+    }
+
+    syncedKeyRef.current = syncKey;
     control?.syncMonthData({
       activeTab,
       monthKey,
@@ -228,21 +295,12 @@ export function MonthDataSync({
       carriedFromMonthLabel,
       budget,
       pinLockEnabled,
+      userDisplayName,
+      userEmail,
+      isSuperAdmin,
     });
     markContentReady();
-  }, [
-    control,
-    activeTab,
-    monthKey,
-    monthLabel,
-    carriedFromMonthLabel,
-    budget.totalSalary,
-    budget.savingsGoal,
-    budget.monthKey,
-    categoriesKey,
-    pinLockEnabled,
-    markContentReady,
-  ]);
+  }, [control, syncKey, activeTab, monthKey, monthLabel, carriedFromMonthLabel, budget, pinLockEnabled, userDisplayName, userEmail, isSuperAdmin, markContentReady]);
 
   return children;
 }

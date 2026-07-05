@@ -18,8 +18,16 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
     return <AuthGate gateState={shellData}>{null}</AuthGate>;
   }
 
-  const { monthKey, monthLabel, budget, carriedFromMonthLabel, isSuperAdmin, pinLockEnabled } =
-    shellData;
+  const {
+    monthKey,
+    monthLabel,
+    budget,
+    carriedFromMonthLabel,
+    isSuperAdmin,
+    pinLockEnabled,
+    userDisplayName,
+    userEmail,
+  } = shellData;
   const hasBudgetMetrics = budget.totalSalary > 0 || budget.savingsGoal > 0;
 
   return (
@@ -31,6 +39,9 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
         carriedFromMonthLabel={carriedFromMonthLabel}
         budget={budget}
         pinLockEnabled={pinLockEnabled}
+        userDisplayName={userDisplayName}
+        userEmail={userEmail}
+        isSuperAdmin={isSuperAdmin}
       >
         {hasBudgetMetrics ? (
           <ExpenseContentSuspense>

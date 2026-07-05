@@ -3,7 +3,10 @@
 import { useLayoutEffect, useState } from "react";
 import { ClearAppShell } from "@/components/AppShellProvider";
 import PinUnlock from "@/components/PinUnlock";
-import { isPinTabUnlocked, markPinTabUnlocked } from "@/lib/pinTabSession";
+import {
+  isPinTabAccessGranted,
+  markPinTabUnlocked,
+} from "@/lib/pinTabSession";
 
 interface PinTabGateProps {
   userId: string;
@@ -11,26 +14,33 @@ interface PinTabGateProps {
   children: React.ReactNode;
 }
 
+type PinTabStatus = "checking" | "locked" | "unlocked";
+
 export default function PinTabGate({
   userId,
   pinLockEnabled,
   children,
 }: PinTabGateProps) {
-  const [unlocked, setUnlocked] = useState(
-    () => !pinLockEnabled || isPinTabUnlocked(userId),
+  // "checking" matches server + first client paint — never assume locked (avoids PIN flash).
+  const [status, setStatus] = useState<PinTabStatus>(
+    pinLockEnabled ? "checking" : "unlocked",
   );
 
   useLayoutEffect(() => {
     if (!pinLockEnabled) {
-      setUnlocked(true);
+      setStatus("unlocked");
       return;
     }
 
-    setUnlocked(isPinTabUnlocked(userId));
+    setStatus(isPinTabAccessGranted(userId) ? "unlocked" : "locked");
   }, [pinLockEnabled, userId]);
 
-  if (!pinLockEnabled || unlocked) {
+  if (status === "unlocked") {
     return <>{children}</>;
+  }
+
+  if (status === "checking") {
+    return <div className="min-h-screen bg-background" aria-busy="true" aria-label="Loading" />;
   }
 
   return (
@@ -40,7 +50,7 @@ export default function PinTabGate({
         userId={userId}
         onSuccess={() => {
           markPinTabUnlocked(userId);
-          setUnlocked(true);
+          setStatus("unlocked");
         }}
       />
     </>

@@ -1,10 +1,19 @@
 interface SortableExpense {
   date: Date | string;
-  createdAt?: Date;
+  createdAt?: Date | string;
 }
 
 function normalizeExpenseDate(date: Date | string): Date {
   return date instanceof Date ? date : new Date(date);
+}
+
+function normalizeExpenseTimestamp(date: Date | string | undefined): number {
+  if (!date) {
+    return 0;
+  }
+
+  const parsed = normalizeExpenseDate(date);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
 export function compareExpensesByRecency(
@@ -12,14 +21,14 @@ export function compareExpensesByRecency(
   right: SortableExpense,
 ): number {
   const dateDiff =
-    normalizeExpenseDate(right.date).getTime() -
-    normalizeExpenseDate(left.date).getTime();
+    normalizeExpenseTimestamp(right.date) - normalizeExpenseTimestamp(left.date);
 
   if (dateDiff !== 0) {
     return dateDiff;
   }
 
   return (
-    (right.createdAt?.getTime() ?? 0) - (left.createdAt?.getTime() ?? 0)
+    normalizeExpenseTimestamp(right.createdAt) -
+    normalizeExpenseTimestamp(left.createdAt)
   );
 }

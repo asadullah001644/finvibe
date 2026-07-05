@@ -74,3 +74,24 @@ export function clearPinTabBootstrapCookie(): void {
 
   document.cookie = `${PIN_TAB_BOOTSTRAP_COOKIE}=; Max-Age=0; path=/`;
 }
+
+/** Apply one-time post-login bootstrap, if present. Returns true when applied. */
+export function applyPinTabBootstrap(userId: string): boolean {
+  const bootstrapUserId = readPinTabBootstrapUserId();
+  if (bootstrapUserId !== userId) {
+    return false;
+  }
+
+  markPinTabUnlocked(userId);
+  clearPinTabBootstrapCookie();
+  return true;
+}
+
+/** Whether this browser tab has already unlocked the app PIN gate. */
+export function isPinTabAccessGranted(userId: string): boolean {
+  if (applyPinTabBootstrap(userId)) {
+    return true;
+  }
+
+  return isPinTabUnlocked(userId);
+}

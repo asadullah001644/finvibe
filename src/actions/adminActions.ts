@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAuth, requireSuperAdmin } from "@/lib/auth";
 import { isProfilesTableMissing, isUserIdColumnMissing } from "@/lib/schema";
+import { resolveDisplayName } from "@/lib/profileDisplay";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import type { Profile } from "@/lib/types";
@@ -10,6 +11,7 @@ import type { Profile } from "@/lib/types";
 export interface AdminUserRow {
   id: string;
   email: string;
+  displayName: string | null;
   role: Profile["role"];
   isDisabled: boolean;
   createdAt: string;
@@ -27,9 +29,14 @@ export interface AdminPageData {
   schemaMessage?: string;
 }
 
+function isDisplayNameColumnMissing(error: { message?: string }): boolean {
+  return (error.message ?? "").toLowerCase().includes("display_name");
+}
+
 function mapAdminUser(row: {
   id: string;
   email: string;
+  display_name: string | null;
   role: Profile["role"];
   is_disabled: boolean;
   created_at: string;
@@ -37,26 +44,56 @@ function mapAdminUser(row: {
   return {
     id: row.id,
     email: row.email,
+    displayName: row.display_name,
     role: row.role,
     isDisabled: row.is_disabled,
     createdAt: row.created_at,
   };
 }
 
+function mapAdminUserRow(row: {
+  id: string;
+  email: string;
+  display_name?: string | null;
+  role: Profile["role"];
+  is_disabled: boolean;
+  created_at: string;
+}): AdminUserRow {
+  return mapAdminUser({
+    id: row.id,
+    email: row.email,
+    display_name: row.display_name ?? null,
+    role: row.role,
+    is_disabled: row.is_disabled,
+    created_at: row.created_at,
+  });
+}
+
 function mapAuthUserToAdminRow(user: {
   id: string;
   email: string;
+  displayName?: string | null;
   role: Profile["role"];
   createdAt: string;
 }): AdminUserRow {
   return {
     id: user.id,
     email: user.email,
+    displayName: user.displayName ?? null,
     role: user.role,
     isDisabled: false,
     createdAt: user.createdAt,
   };
 }
+
+type AdminProfileRow = {
+  id: string;
+  email: string;
+  display_name?: string | null;
+  role: Profile["role"];
+  is_disabled: boolean;
+  created_at: string;
+};
 
 export async function getAdminPageDataAction(
   filters: AdminUserFilters = {},
@@ -64,10 +101,22 @@ export async function getAdminPageDataAction(
   const { user, profile } = await requireSuperAdmin();
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  const primary = await supabase
     .from("profiles")
-    .select("id, email, role, is_disabled, created_at")
+    .select("id, email, display_name, role, is_disabled, created_at")
     .order("created_at", { ascending: false });
+
+  let data = primary.data as AdminProfileRow[] | null;
+  let error = primary.error;
+
+  if (error && isDisplayNameColumnMissing(error)) {
+    const legacy = await supabase
+      .from("profiles")
+      .select("id, email, role, is_disabled, created_at")
+      .order("created_at", { ascending: false });
+    data = legacy.data as AdminProfileRow[] | null;
+    error = legacy.error;
+  }
 
   if (error && isProfilesTableMissing(error)) {
     return {
@@ -78,6 +127,7 @@ export async function getAdminPageDataAction(
         mapAuthUserToAdminRow({
           id: user.id,
           email: user.email ?? profile.email,
+          displayName: profile.displayName,
           role: profile.role,
           createdAt: profile.createdAt,
         }),
@@ -89,11 +139,21 @@ export async function getAdminPageDataAction(
     throw new Error(error.message);
   }
 
-  let users = (data ?? []).map(mapAdminUser);
+  let users = (data ?? []).map(mapAdminUserRow);
 
   if (filters.email?.trim()) {
     const needle = filters.email.trim().toLowerCase();
-    users = users.filter((row) => row.email.toLowerCase().includes(needle));
+    users = users.filter((row) => {
+      const label = resolveDisplayName({
+        displayName: row.displayName,
+        email: row.email,
+      }).toLowerCase();
+      return (
+        row.email.toLowerCase().includes(needle) ||
+        label.includes(needle) ||
+        (row.displayName?.toLowerCase().includes(needle) ?? false)
+      );
+    });
   }
 
   if (filters.role && filters.role !== "all") {
@@ -274,17 +334,31 @@ async function getExpensesForUser(userId: string, monthKey: string) {
 export async function getAdminUserProfileAction(userId: string): Promise<AdminUserRow | null> {
   const { user, profile } = await requireSuperAdmin();
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const primary = await supabase
     .from("profiles")
-    .select("id, email, role, is_disabled, created_at")
+    .select("id, email, display_name, role, is_disabled, created_at")
     .eq("id", userId)
     .maybeSingle();
+
+  let data = primary.data as AdminProfileRow | null;
+  let error = primary.error;
+
+  if (error && isDisplayNameColumnMissing(error)) {
+    const legacy = await supabase
+      .from("profiles")
+      .select("id, email, role, is_disabled, created_at")
+      .eq("id", userId)
+      .maybeSingle();
+    data = legacy.data as AdminProfileRow | null;
+    error = legacy.error;
+  }
 
   if (error && isProfilesTableMissing(error)) {
     if (userId === user.id) {
       return mapAuthUserToAdminRow({
         id: user.id,
         email: user.email ?? profile.email,
+        displayName: profile.displayName,
         role: profile.role,
         createdAt: profile.createdAt,
       });
@@ -296,5 +370,5 @@ export async function getAdminUserProfileAction(userId: string): Promise<AdminUs
     throw new Error(error.message);
   }
 
-  return data ? mapAdminUser(data as Parameters<typeof mapAdminUser>[0]) : null;
+  return data ? mapAdminUserRow(data) : null;
 }
