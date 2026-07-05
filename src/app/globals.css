@@ -25,6 +25,19 @@ body {
   background-color: rgba(139, 92, 246, 0.2);
 }
 
+@layer utilities {
+  .no-number-spinner {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  .no-number-spinner::-webkit-outer-spin-button,
+  .no-number-spinner::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
 @layer base {
   @media (hover: hover) and (pointer: fine) {
     a[href],

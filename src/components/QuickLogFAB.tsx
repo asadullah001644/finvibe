@@ -11,7 +11,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Calendar, Banknote, FileText, Loader2, Plus, X } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { saveExpenseAction } from "@/lib/actions";
 import { getCategoryGroups, resolveCategoryHint } from "@/lib/constants";
@@ -153,6 +153,13 @@ export default function QuickLogFAB({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [closeSheet, isOpen, isSubmitting]);
 
+  const handleAmountChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    if (value === "" || /^\d*\.?\d{0,2}$/.test(value)) {
+      setAmount(value);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -228,24 +235,26 @@ export default function QuickLogFAB({
                 : { opacity: 0, y: "100%" }
             }
             transition={{ type: "spring", damping: 30, stiffness: 340 }}
-            className="fixed z-[201] flex max-h-[min(90vh,720px)] flex-col overflow-hidden border border-cardBorder bg-card shadow-[0_0_60px_rgba(16,185,129,0.12)] inset-x-0 bottom-0 rounded-t-3xl lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-1/2 lg:w-[min(calc(100vw-2rem),28rem)] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl lg:shadow-[0_0_60px_rgba(139,92,246,0.18)]"
+            className="fixed z-[201] flex max-h-[min(92vh,720px)] flex-col overflow-hidden border border-cardBorder bg-card shadow-[0_-16px_48px_rgba(0,0,0,0.45)] inset-x-0 bottom-0 rounded-t-[1.75rem] lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-1/2 lg:max-h-[min(calc(100vh-3rem),680px)] lg:w-[min(calc(100vw-3rem),34rem)] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl lg:border-cardBorder/80 lg:bg-[#111114] lg:shadow-[0_28px_80px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.04)]"
           >
-            <div className="shrink-0 border-b border-cardBorder px-5 pb-4 pt-4 lg:px-6 lg:pb-5 lg:pt-5">
+            <div className="pointer-events-none absolute inset-x-0 top-0 hidden h-36 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_72%)] lg:block" />
+
+            <div className="relative shrink-0 border-b border-cardBorder/80 px-5 pb-4 pt-4 lg:px-7 lg:pb-5 lg:pt-6">
               <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-cardBorder lg:hidden" />
 
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.28em] text-neonEmerald/80">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-neonEmerald/75 lg:text-xs">
                     Add Expense
                   </p>
                   <h2
                     id="add-expense-title"
-                    className="mt-2 text-lg font-semibold text-zinc-100"
+                    className="mt-2 text-xl font-semibold tracking-tight text-zinc-100 lg:mt-2.5 lg:text-2xl"
                   >
-                    Log a purchase
+                    Record a transaction
                   </h2>
-                  <p className="mt-1 text-sm text-zinc-500">
-                    Amount, category, and date — saved to this month.
+                  <p className="mt-1.5 text-sm leading-relaxed text-zinc-500 lg:max-w-[22rem]">
+                    Enter amount and category — it&apos;s added to this month&apos;s ledger.
                   </p>
                 </div>
 
@@ -253,7 +262,7 @@ export default function QuickLogFAB({
                   type="button"
                   aria-label="Close"
                   onClick={closeSheet}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cardBorder bg-background text-zinc-400 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cardBorder/80 bg-background/80 text-zinc-400 backdrop-blur-sm transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -262,41 +271,51 @@ export default function QuickLogFAB({
 
             <form
               onSubmit={handleSubmit}
-              className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5 lg:px-6"
+              className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5 lg:px-7 lg:py-6"
             >
-              <div className="space-y-5">
+              <div className="space-y-6">
                 <label className="block">
-                  <span className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
-                    <Banknote className="h-3.5 w-3.5 text-neonEmerald" />
-                    Amount (PKR)
+                  <span className="mb-2.5 block text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                    Amount
                   </span>
-                  <input
-                    ref={amountRef}
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    min="0"
-                    placeholder="0"
-                    value={amount}
-                    onChange={(event) => setAmount(event.target.value)}
-                    className="w-full rounded-xl border border-cardBorder bg-background px-4 py-3 text-2xl font-semibold tabular-nums text-zinc-100 outline-none transition-colors placeholder:text-zinc-600 focus:border-neonViolet focus:shadow-[0_0_0_1px_rgba(139,92,246,0.45)]"
-                  />
+                  <div className="overflow-hidden rounded-2xl border border-cardBorder/80 bg-background/70 ring-1 ring-white/[0.03] transition-colors focus-within:border-neonViolet/60 focus-within:ring-neonViolet/20 lg:bg-gradient-to-br lg:from-[#0C0C0F] lg:to-card/50">
+                    <div className="flex items-center gap-3 px-4 py-1 lg:px-5 lg:py-2">
+                      <span className="shrink-0 text-sm font-medium text-zinc-500">PKR</span>
+                      <input
+                        ref={amountRef}
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
+                        placeholder="0"
+                        value={amount}
+                        onChange={handleAmountChange}
+                        className="no-number-spinner w-full min-w-0 border-0 bg-transparent py-3 text-3xl font-semibold tabular-nums tracking-tight text-zinc-100 outline-none placeholder:text-zinc-600 lg:py-3.5 lg:text-[2rem]"
+                      />
+                    </div>
+                  </div>
                 </label>
 
                 <div>
-                  <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
-                    Category
-                  </p>
-                  <div className="max-h-44 overflow-y-auto rounded-xl border border-cardBorder/80 bg-background/40 p-2.5 sm:max-h-52">
-                    <div className="space-y-3">
+                  <div className="mb-2.5 flex items-center justify-between gap-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                      Category
+                    </p>
+                    {category && (
+                      <span className="truncate text-xs text-neonViolet/90">
+                        {category.split(" › ").slice(-1)[0]}
+                      </span>
+                    )}
+                  </div>
+                  <div className="max-h-44 overflow-y-auto rounded-2xl border border-cardBorder/70 bg-[#0C0C0F]/80 p-3 ring-1 ring-white/[0.02] lg:max-h-56">
+                    <div className="space-y-4">
                       {categoryGroups.map((group) => (
                         <div key={group.label ?? group.items[0]}>
                           {group.label && (
-                            <p className="sticky top-0 z-10 mb-2 bg-background/95 px-1 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-neonViolet/80">
+                            <p className="sticky top-0 z-10 mb-2.5 bg-[#0C0C0F]/95 px-0.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-neonViolet/75">
                               {group.label}
                             </p>
                           )}
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
                             {group.items.map((item) => {
                               const isSelected = category === item;
                               const displayName = group.label
@@ -308,10 +327,10 @@ export default function QuickLogFAB({
                                   key={item}
                                   type="button"
                                   onClick={() => setCategory(item)}
-                                  className={`min-h-11 rounded-lg border px-2.5 py-2.5 text-left text-xs font-medium transition-colors sm:text-sm ${
+                                  className={`min-h-10 rounded-xl border px-3 py-2.5 text-left text-xs font-medium transition-all duration-150 lg:text-[13px] ${
                                     isSelected
-                                      ? "border-neonViolet bg-neonViolet/10 text-neonViolet shadow-[0_0_16px_rgba(139,92,246,0.15)]"
-                                      : "border-cardBorder bg-card text-zinc-200 hover:border-neonViolet/50"
+                                      ? "border-neonViolet/70 bg-neonViolet/15 text-neonViolet shadow-[inset_0_0_0_1px_rgba(139,92,246,0.25),0_0_20px_rgba(139,92,246,0.12)]"
+                                      : "border-cardBorder/80 bg-card/50 text-zinc-300 hover:border-neonViolet/35 hover:bg-card"
                                   }`}
                                 >
                                   {displayName}
@@ -324,40 +343,38 @@ export default function QuickLogFAB({
                     </div>
                   </div>
                   {category && resolveCategoryHint(category) && (
-                    <p className="mt-2 text-xs text-zinc-500">
+                    <p className="mt-2.5 text-xs leading-relaxed text-zinc-500">
                       {resolveCategoryHint(category)}
                     </p>
                   )}
                 </div>
 
-                <div className="space-y-4">
-                  <label className="block">
-                    <span className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
-                      <FileText className="h-3.5 w-3.5 text-neonViolet" />
-                      Description
-                      <span className="normal-case tracking-normal text-zinc-600">
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <label className="block lg:col-span-2">
+                    <span className="mb-2.5 block text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                      Description{" "}
+                      <span className="font-normal normal-case tracking-normal text-zinc-600">
                         (optional)
                       </span>
                     </span>
                     <input
                       type="text"
-                      placeholder="Coffee, groceries..."
+                      placeholder="What was this for?"
                       value={description}
                       onChange={(event) => setDescription(event.target.value)}
-                      className="w-full rounded-xl border border-cardBorder bg-background px-4 py-3 text-sm text-zinc-100 outline-none transition-colors placeholder:text-zinc-600 focus:border-neonViolet"
+                      className="w-full rounded-xl border border-cardBorder/80 bg-background/70 px-4 py-3 text-sm text-zinc-100 outline-none ring-1 ring-white/[0.03] transition-colors placeholder:text-zinc-600 focus:border-neonViolet/60 focus:ring-neonViolet/20"
                     />
                   </label>
 
-                  <label className="block">
-                    <span className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
-                      <Calendar className="h-3.5 w-3.5 text-neonViolet" />
+                  <label className="block lg:col-span-2">
+                    <span className="mb-2.5 block text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
                       Date
                     </span>
                     <input
                       type="date"
                       value={date}
                       onChange={(event) => setDate(event.target.value)}
-                      className="w-full rounded-xl border border-cardBorder bg-background px-4 py-3 text-sm text-zinc-100 outline-none transition-colors focus:border-neonViolet [color-scheme:dark]"
+                      className="w-full rounded-xl border border-cardBorder/80 bg-background/70 px-4 py-3 text-sm text-zinc-100 outline-none ring-1 ring-white/[0.03] transition-colors focus:border-neonViolet/60 focus:ring-neonViolet/20 [color-scheme:dark] lg:max-w-[14rem]"
                     />
                   </label>
                 </div>
@@ -369,11 +386,11 @@ export default function QuickLogFAB({
                 )}
               </div>
 
-              <div className="sticky bottom-0 mt-5 shrink-0 border-t border-cardBorder/80 bg-card pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:border-0 lg:bg-transparent lg:pb-0 lg:pt-6">
+              <div className="sticky bottom-0 mt-6 shrink-0 border-t border-cardBorder/70 bg-card/95 pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm lg:mt-7 lg:border-t lg:border-cardBorder/60 lg:bg-transparent lg:pb-0 lg:pt-5 lg:backdrop-blur-none">
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-neonEmerald/40 bg-neonEmerald/15 px-4 py-3.5 text-sm font-semibold text-neonEmerald transition-colors hover:bg-neonEmerald/25 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-neonEmerald px-4 py-3.5 text-sm font-semibold text-[#041510] shadow-[0_10px_28px_rgba(16,185,129,0.28)] transition-all hover:bg-[#0ea271] hover:shadow-[0_12px_32px_rgba(16,185,129,0.34)] disabled:cursor-not-allowed disabled:opacity-50 lg:py-3.5"
                 >
                   {isSubmitting ? (
                     <>
