@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Calendar, Banknote, FileText, Plus, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { saveExpenseAction } from "@/lib/actions";
 import { getCategoryGroups, resolveCategoryHint } from "@/lib/constants";
 import { getLocalTodayDateString } from "@/lib/expenseDate";
@@ -62,7 +62,7 @@ export default function QuickLogFAB({
     ...group,
     items: group.items.filter((item) => customCategories.includes(item)),
   })).filter((group) => group.items.length > 0);
-  const router = useRouter();
+  const { refresh } = useAppNavigation();
   const amountRef = useRef<HTMLInputElement>(null);
 
   const [isOpen, setIsOpen] = useState(false);
@@ -131,7 +131,7 @@ export default function QuickLogFAB({
 
       resetForm();
       setIsOpen(false);
-      router.refresh();
+      await refresh();
     } catch {
       setError("Something went wrong while saving.");
     } finally {

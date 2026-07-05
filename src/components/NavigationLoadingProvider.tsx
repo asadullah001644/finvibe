@@ -14,7 +14,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 interface NavigationContextValue {
   navigate: (href: string) => void;
+  refresh: () => Promise<void>;
   isNavigating: boolean;
+  isRefreshing: boolean;
   setDeferredLoading: (loading: boolean) => void;
 }
 
@@ -44,7 +46,9 @@ export default function NavigationLoadingProvider({
   const [isPending, startTransition] = useTransition();
   const [isNavigating, setIsNavigating] = useState(false);
   const [deferredLoadingCount, setDeferredLoadingCount] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const targetHrefRef = useRef<string | null>(null);
+  const refreshResolveRef = useRef<(() => void) | null>(null);
 
   const setDeferredLoading = useCallback((loading: boolean) => {
     setDeferredLoadingCount((count) =>
@@ -72,6 +76,30 @@ export default function NavigationLoadingProvider({
     }
   }, [isNavigating, isPending, locationKey]);
 
+  useEffect(() => {
+    if (isPending || !refreshResolveRef.current) {
+      return;
+    }
+
+    refreshResolveRef.current();
+    refreshResolveRef.current = null;
+  }, [isPending]);
+
+  const refresh = useCallback(() => {
+    setIsRefreshing(true);
+
+    return new Promise<void>((resolve) => {
+      refreshResolveRef.current = () => {
+        setIsRefreshing(false);
+        resolve();
+      };
+
+      startTransition(() => {
+        router.refresh();
+      });
+    });
+  }, [router]);
+
   const navigate = useCallback(
     (href: string) => {
       if (href === locationKey || href === targetHrefRef.current) {
@@ -93,7 +121,13 @@ export default function NavigationLoadingProvider({
 
   return (
     <NavigationContext.Provider
-      value={{ navigate, isNavigating: showOverlay, setDeferredLoading }}
+      value={{
+        navigate,
+        refresh,
+        isNavigating: showOverlay,
+        isRefreshing,
+        setDeferredLoading,
+      }}
     >
       {children}
     </NavigationContext.Provider>

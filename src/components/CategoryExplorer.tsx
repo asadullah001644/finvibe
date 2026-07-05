@@ -3,13 +3,14 @@
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import { Filter, Check, Loader2, Pencil, Trash2, X } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   deleteExpenseAction,
   updateExpenseAction,
 } from "@/lib/actions";
+import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import {
   CATEGORY_SEPARATOR,
   getCategoryGroups,
@@ -101,7 +102,7 @@ function ExpenseEditForm({
   item: ExplorerExpense;
   categoryNames: string[];
   onCancel: () => void;
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
 }) {
   const categoryGroups = getCategoryGroups()
     .map((group) => ({
@@ -148,10 +149,12 @@ function ExpenseEditForm({
 
     if (!result.success) {
       setError(result.error ?? "Could not update expense.");
+      setIsSubmitting(false);
       return;
     }
 
-    onSaved();
+    await onSaved();
+    setIsSubmitting(false);
   };
 
   return (
@@ -510,8 +513,8 @@ export default function CategoryExplorer({
   expenses,
   categoryNames,
 }: CategoryExplorerProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const { refresh } = useAppNavigation();
 
   const urlFilters = readFiltersFromSearchParams(searchParams);
   const [appliedGroup, setAppliedGroup] =
@@ -566,7 +569,7 @@ export default function CategoryExplorer({
     setAppliedCategories(categories);
     window.history.replaceState(null, "", nextUrl);
 
-    await router.refresh();
+    await refresh();
 
     setIsApplyingFilters(false);
     setFilterOpen(false);
@@ -586,12 +589,12 @@ export default function CategoryExplorer({
     }
 
     setEditingId(null);
-    router.refresh();
+    await refresh();
   };
 
-  const handleSaved = () => {
+  const handleSaved = async () => {
     setEditingId(null);
-    router.refresh();
+    await refresh();
   };
 
   const filterLabel = formatFilterLabel(appliedGroup, appliedCategories);

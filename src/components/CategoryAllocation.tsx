@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { LayoutList, Sparkles, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { saveCategoryAllocationsAction } from "@/lib/actions";
 import {
   distributeCategoryBudgets,
@@ -38,7 +38,7 @@ export default function CategoryAllocation({
   showTrigger = true,
   hasLimitsSet = false,
 }: CategoryAllocationProps) {
-  const router = useRouter();
+  const { refresh } = useAppNavigation();
   const [internalOpen, setInternalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const isOpen = controlledOpen ?? internalOpen;
@@ -113,15 +113,15 @@ export default function CategoryAllocation({
       categories: categoryRows,
     });
 
-    setIsSubmitting(false);
-
     if (!result.success) {
       setError(result.error ?? "Could not save category limits. Try again.");
+      setIsSubmitting(false);
       return;
     }
 
     setOpen(false);
-    router.refresh();
+    await refresh();
+    setIsSubmitting(false);
   };
 
   const modal = (

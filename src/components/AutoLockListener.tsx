@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { lockSession } from "@/app/actions/aiAndAuthActions";
 
 const AUTO_LOCK_MS = 5 * 60 * 1000;
 
 export default function AutoLockListener() {
-  const router = useRouter();
+  const { refresh } = useAppNavigation();
   const hiddenAtRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function AutoLockListener() {
 
       if (Date.now() - hiddenAt >= AUTO_LOCK_MS) {
         await lockSession();
-        router.refresh();
+        await refresh();
       }
     };
 
@@ -40,7 +40,7 @@ export default function AutoLockListener() {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [router]);
+  }, [refresh]);
 
   return null;
 }

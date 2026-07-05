@@ -10,7 +10,7 @@ import {
 } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import { Pencil, ShoppingBag, Trash2, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import {
   deleteExpenseAction,
   updateExpenseAction,
@@ -146,7 +146,7 @@ interface ExpenseEditFormProps {
   item: HeatmapExpense;
   categoryNames: string[];
   onCancel: () => void;
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
 }
 
 function ExpenseEditForm({
@@ -197,10 +197,12 @@ function ExpenseEditForm({
 
     if (!result.success) {
       setError(result.error ?? "Could not update expense.");
+      setIsSubmitting(false);
       return;
     }
 
-    onSaved();
+    await onSaved();
+    setIsSubmitting(false);
   };
 
   return (
@@ -277,7 +279,7 @@ export default function HeatmapCalendar({
   expenses,
   categoryNames,
 }: HeatmapCalendarProps) {
-  const router = useRouter();
+  const { refresh } = useAppNavigation();
   const currentMonth = useMemo(() => startOfMonth(monthKeyToDate(monthKey)), [monthKey]);
   const [selectedDay, setSelectedDay] = useState<DayCell | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -303,17 +305,17 @@ export default function HeatmapCalendar({
     if (result.success) {
       setSelectedDay(null);
       setEditingId(null);
-      router.refresh();
+      await refresh();
       return;
     }
 
     setDeleteError(result.error ?? "Could not delete expense.");
   };
 
-  const handleSaved = () => {
+  const handleSaved = async () => {
     setEditingId(null);
     setSelectedDay(null);
-    router.refresh();
+    await refresh();
   };
 
   return (

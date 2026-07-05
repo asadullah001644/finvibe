@@ -14,6 +14,7 @@ import AppHeader from "@/components/AppHeader";
 import AutoLockListener from "@/components/AutoLockListener";
 import CarryForwardNotice from "@/components/CarryForwardNotice";
 import ContentLoadingOverlay from "@/components/ContentLoadingOverlay";
+import ContentRefreshSkeleton from "@/components/ContentRefreshSkeleton";
 import QuickLogFAB from "@/components/QuickLogFAB";
 import type { AppTab } from "@/lib/navigation";
 import type { BudgetCategory } from "@/lib/types";
@@ -165,6 +166,7 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
 
           <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-8 pb-24">
             <ContentLoadingOverlay />
+            <ContentRefreshSkeleton />
             {children}
           </div>
 

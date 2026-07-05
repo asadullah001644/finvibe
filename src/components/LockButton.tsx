@@ -1,12 +1,12 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { useState } from "react";
 import { lockSession } from "@/app/actions/aiAndAuthActions";
 
 export default function LockButton() {
-  const router = useRouter();
+  const { refresh } = useAppNavigation();
   const [isLocking, setIsLocking] = useState(false);
 
   const handleLock = async () => {
@@ -14,7 +14,7 @@ export default function LockButton() {
 
     try {
       await lockSession();
-      router.refresh();
+      await refresh();
     } finally {
       setIsLocking(false);
     }

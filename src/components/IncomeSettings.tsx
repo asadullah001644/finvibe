@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Wallet, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { getPriorMonthBudgetAction, saveIncomeAction } from "@/lib/actions";
 import { formatMonthLabel } from "@/lib/month";
 import { formatCurrency } from "@/lib/currency";
@@ -34,7 +34,7 @@ export default function IncomeSettings({
   onOpenChange,
   showTrigger = true,
 }: IncomeSettingsProps) {
-  const router = useRouter();
+  const { refresh } = useAppNavigation();
   const [internalOpen, setInternalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const isOpen = controlledOpen ?? internalOpen;
@@ -143,15 +143,15 @@ export default function IncomeSettings({
       savingsGoal: parsedGoal,
     });
 
-    setIsSubmitting(false);
-
     if (!result.success) {
       setError(result.error ?? "Could not save income. Try again.");
+      setIsSubmitting(false);
       return;
     }
 
     setOpen(false);
-    router.refresh();
+    await refresh();
+    setIsSubmitting(false);
   };
 
   const modal = (

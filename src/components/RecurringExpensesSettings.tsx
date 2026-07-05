@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus, Repeat, Trash2, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import {
   deleteRecurringExpenseAction,
   getRecurringExpensesAction,
@@ -31,7 +31,7 @@ export default function RecurringExpensesSettings({
   onOpenChange,
   showTrigger = true,
 }: RecurringExpensesSettingsProps) {
-  const router = useRouter();
+  const { refresh } = useAppNavigation();
   const [internalOpen, setInternalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const isOpen = controlledOpen ?? internalOpen;
@@ -128,7 +128,7 @@ export default function RecurringExpensesSettings({
 
     resetForm();
     await loadItems();
-    router.refresh();
+    await refresh();
   };
 
   const handleToggleActive = async (item: RecurringExpense) => {
@@ -148,7 +148,7 @@ export default function RecurringExpensesSettings({
     }
 
     await loadItems();
-    router.refresh();
+    await refresh();
   };
 
   const handleDelete = async (id: string) => {
@@ -166,7 +166,7 @@ export default function RecurringExpensesSettings({
     }
 
     await loadItems();
-    router.refresh();
+    await refresh();
   };
 
   const modal = (
