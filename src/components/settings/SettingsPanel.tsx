@@ -96,7 +96,8 @@ export default function SettingsPanel({
           <div>
             <h2 className="text-lg font-medium">App PIN lock</h2>
             <p className="mt-1 text-sm text-zinc-400">
-              Optional 4-digit PIN shown after sign-in on this device.
+              Optional 4-digit PIN after sign-in. Stays unlocked until you close the tab or app,
+              tap Lock, or sign out. Works in the browser and installed app.
             </p>
           </div>
 

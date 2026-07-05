@@ -11,7 +11,6 @@ import {
 } from "react";
 import AppBottomNav from "@/components/AppBottomNav";
 import AppHeader from "@/components/AppHeader";
-import AutoLockListener from "@/components/AutoLockListener";
 import CarryForwardNotice from "@/components/CarryForwardNotice";
 import ContentLoadingOverlay from "@/components/ContentLoadingOverlay";
 import ContentSubtleRefresh from "@/components/ContentSubtleRefresh";
@@ -164,8 +163,6 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
     <AppShellControlContext.Provider value={controlValue}>
       <AppShellActionsContext.Provider value={actions}>
         <main className="relative min-h-screen overflow-x-hidden bg-[#09090B] pb-32 text-zinc-100 selection:bg-[#8B5CF6]/30">
-          {monthData.pinLockEnabled && <AutoLockListener />}
-
           <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.12),transparent_70%)]" />
 
           <AppHeader

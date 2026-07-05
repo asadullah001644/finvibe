@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Delete, Loader2 } from "lucide-react";
 import { verifyPin } from "@/app/actions/aiAndAuthActions";
+import { signOutAction } from "@/app/actions/authActions";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { useRouter } from "next/navigation";
 
 interface PinPadProps {
@@ -18,6 +20,7 @@ type PinPhase = "idle" | "verifying" | "unlocking" | "error";
 export default function PinPad({ onSuccess }: PinPadProps) {
   const router = useRouter();
   const onSuccessRef = useRef(onSuccess);
+  const [signOutPending, startSignOutTransition] = useTransition();
 
   useEffect(() => {
     onSuccessRef.current = onSuccess;
@@ -273,6 +276,26 @@ export default function PinPad({ onSuccess }: PinPadProps) {
             <Delete className="h-5 w-5" strokeWidth={1.75} />
           </PinButton>
         </motion.div>
+
+        <button
+          type="button"
+          disabled={isLocked || signOutPending}
+          onClick={() =>
+            startSignOutTransition(async () => {
+              try {
+                await signOutAction();
+              } catch (error) {
+                if (!isRedirectError(error)) {
+                  setErrorMessage("Could not sign out. Please try again.");
+                  setPhase("error");
+                }
+              }
+            })
+          }
+          className="mt-8 text-sm text-zinc-500 transition-colors hover:text-zinc-300 disabled:opacity-50"
+        >
+          Sign out instead
+        </button>
       </motion.div>
     </div>
   );

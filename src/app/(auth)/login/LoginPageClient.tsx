@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signInAction } from "@/app/actions/authActions";
+import { createClient } from "@/utils/supabase/client";
 import AuthShell, {
   AuthError,
   AuthField,
@@ -13,14 +14,44 @@ import AuthShell, {
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 export default function LoginPageClient() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   const resetSuccess = searchParams.get("reset") === "success";
   const disabled = searchParams.get("disabled") === "1";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkExistingSession() {
+      try {
+        const supabase = createClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!cancelled && session?.user && !disabled) {
+          router.replace("/");
+          return;
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingSession(false);
+        }
+      }
+    }
+
+    void checkExistingSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [disabled, router]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -38,6 +69,14 @@ export default function LoginPageClient() {
     } finally {
       setPending(false);
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <AuthShell title="Welcome back" subtitle="Checking your session...">
+        <p className="text-center text-sm text-zinc-500">Loading...</p>
+      </AuthShell>
+    );
   }
 
   return (

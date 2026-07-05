@@ -1,12 +1,19 @@
 import SettingsPanel from "@/components/settings/SettingsPanel";
 import NavigationContentReady from "@/components/NavigationContentReady";
-import { isProfilesTableReady, requireAuth, isSuperAdmin } from "@/lib/auth";
+import { isProfilesTableReady, isSuperAdmin } from "@/lib/auth";
+import { AuthGate, getAppAuthGate } from "@/lib/pageHelpers";
 
 export default async function SettingsPage() {
-  const [{ profile }, profilesReady] = await Promise.all([
-    requireAuth(),
+  const [gate, profilesReady] = await Promise.all([
+    getAppAuthGate(),
     isProfilesTableReady(),
   ]);
+
+  if (gate.state === "pin_required") {
+    return <AuthGate gateState={gate}>{null}</AuthGate>;
+  }
+
+  const { profile } = gate;
 
   return (
     <>

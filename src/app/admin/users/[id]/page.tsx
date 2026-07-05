@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatCurrency } from "@/lib/currency";
 import { getAdminUserDataAction, getAdminUserProfileAction } from "@/actions/adminActions";
-import { requireSuperAdmin } from "@/lib/auth";
+import { AuthGate, getAppAuthGate } from "@/lib/pageHelpers";
 import { resolveMonthKey } from "@/lib/month";
 
 interface AdminUserPageProps {
@@ -14,7 +14,12 @@ function formatRole(role: string): string {
 }
 
 export default async function AdminUserPage({ params, searchParams }: AdminUserPageProps) {
-  await requireSuperAdmin();
+  const gate = await getAppAuthGate();
+
+  if (gate.state === "pin_required") {
+    return <AuthGate gateState={gate}>{null}</AuthGate>;
+  }
+
   const { id } = await params;
   const { month } = await searchParams;
   const monthKey = resolveMonthKey(month);

@@ -1,31 +1,29 @@
 import { ClearAppShell } from "@/components/AppShellProvider";
 import PinUnlock from "@/components/PinUnlock";
-import { getProfileOrDefault, getSessionUser } from "@/lib/auth";
+import { getProfileOrDefault, getSessionUser, isSuperAdmin } from "@/lib/auth";
 import { resolveMonthKey } from "@/lib/month";
 import { loadMonthShellData } from "@/lib/loadMonthData";
 import { isPinSessionValid } from "@/lib/pinSession";
+import type { Profile } from "@/lib/types";
 import { redirect } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 
 interface MonthSearchParams {
   month?: string;
 }
 
-export type ShellGateState =
+export type AppAuthGateState =
   | { state: "pin_required" }
   | {
       state: "ready";
-      monthKey: string;
-      monthLabel: string;
-      carriedFromMonthLabel?: string;
-      budget: Awaited<ReturnType<typeof loadMonthShellData>>["budget"];
-      isSuperAdmin: boolean;
+      user: User;
+      profile: Profile;
       pinLockEnabled: boolean;
+      isSuperAdmin: boolean;
     };
 
-export async function getAuthenticatedShellData(
-  searchParams: Promise<MonthSearchParams>,
-): Promise<ShellGateState> {
-  const [user, params] = await Promise.all([getSessionUser(), searchParams]);
+export async function getAppAuthGate(): Promise<AppAuthGateState> {
+  const user = await getSessionUser();
 
   if (!user) {
     redirect("/login");
@@ -46,14 +44,44 @@ export async function getAuthenticatedShellData(
     }
   }
 
+  return {
+    state: "ready",
+    user,
+    profile,
+    pinLockEnabled,
+    isSuperAdmin: isSuperAdmin(profile),
+  };
+}
+
+export type ShellGateState =
+  | { state: "pin_required" }
+  | {
+      state: "ready";
+      monthKey: string;
+      monthLabel: string;
+      carriedFromMonthLabel?: string;
+      budget: Awaited<ReturnType<typeof loadMonthShellData>>["budget"];
+      isSuperAdmin: boolean;
+      pinLockEnabled: boolean;
+    };
+
+export async function getAuthenticatedShellData(
+  searchParams: Promise<MonthSearchParams>,
+): Promise<ShellGateState> {
+  const [gate, params] = await Promise.all([getAppAuthGate(), searchParams]);
+
+  if (gate.state === "pin_required") {
+    return { state: "pin_required" };
+  }
+
   const monthKey = resolveMonthKey(params.month);
   const data = await loadMonthShellData(monthKey);
 
   return {
     state: "ready",
     ...data,
-    isSuperAdmin: profile.role === "super_admin",
-    pinLockEnabled,
+    isSuperAdmin: gate.isSuperAdmin,
+    pinLockEnabled: gate.pinLockEnabled,
   };
 }
 
@@ -61,7 +89,7 @@ export function AuthGate({
   gateState,
   children,
 }: {
-  gateState: ShellGateState;
+  gateState: AppAuthGateState | ShellGateState;
   children: React.ReactNode;
 }) {
   if (gateState.state === "pin_required") {

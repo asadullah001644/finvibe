@@ -17,6 +17,14 @@ function isAdminRoute(pathname: string): boolean {
   return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
+function applyResponseCookies(from: NextResponse, to: NextResponse): NextResponse {
+  for (const cookie of from.cookies.getAll()) {
+    to.cookies.set(cookie);
+  }
+
+  return to;
+}
+
 export async function updateSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
@@ -49,16 +57,20 @@ export async function updateSession(request: NextRequest) {
   if (user && isPublicRoute(pathname) && pathname !== "/reset-password") {
     const url = request.nextUrl.clone();
     url.pathname = "/";
-    return NextResponse.redirect(url);
+    return applyResponseCookies(
+      supabaseResponse,
+      NextResponse.redirect(url),
+    );
   }
 
   if (!user && !isPublicRoute(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
-    const response = NextResponse.redirect(url);
-    response.cookies.delete("finvibe_session");
-    return response;
+    return applyResponseCookies(
+      supabaseResponse,
+      NextResponse.redirect(url),
+    );
   }
 
   if (user && !isPublicRoute(pathname)) {
@@ -73,7 +85,10 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       url.searchParams.set("disabled", "1");
-      return NextResponse.redirect(url);
+      return applyResponseCookies(
+        supabaseResponse,
+        NextResponse.redirect(url),
+      );
     }
 
     if (isAdminRoute(pathname)) {
@@ -87,7 +102,10 @@ export async function updateSession(request: NextRequest) {
       if (!emailIsSuperAdmin && !roleIsSuperAdmin) {
         const url = request.nextUrl.clone();
         url.pathname = "/";
-        return NextResponse.redirect(url);
+        return applyResponseCookies(
+          supabaseResponse,
+          NextResponse.redirect(url),
+        );
       }
     }
   }
