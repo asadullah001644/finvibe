@@ -1,11 +1,22 @@
 "use client";
 
 import PinPad from "@/components/PinPad";
+import { markPinTabUnlocked } from "@/lib/pinTabSession";
 
-export default function PinUnlock() {
+interface PinUnlockProps {
+  userId: string;
+  onSuccess?: () => void;
+}
+
+export default function PinUnlock({ userId, onSuccess }: PinUnlockProps) {
   return (
     <main className="min-h-screen bg-background">
-      <PinPad />
+      <PinPad
+        onSuccess={() => {
+          markPinTabUnlocked(userId);
+          onSuccess?.();
+        }}
+      />
     </main>
   );
 }

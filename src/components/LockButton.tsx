@@ -4,6 +4,7 @@ import { Lock } from "lucide-react";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { useState } from "react";
 import { lockSession } from "@/app/actions/aiAndAuthActions";
+import { clearPinTabUnlock } from "@/lib/pinTabSession";
 
 export default function LockButton() {
   const { refresh } = useAppNavigation();
@@ -13,6 +14,7 @@ export default function LockButton() {
     setIsLocking(true);
 
     try {
+      clearPinTabUnlock();
       await lockSession();
       await refresh();
     } finally {

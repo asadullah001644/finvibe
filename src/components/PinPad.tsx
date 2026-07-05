@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, Delete, Loader2 } from "lucide-react";
 import { verifyPin } from "@/app/actions/aiAndAuthActions";
 import { signOutAction } from "@/app/actions/authActions";
+import { clearPinTabUnlock } from "@/lib/pinTabSession";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { useRouter } from "next/navigation";
 
@@ -283,6 +284,7 @@ export default function PinPad({ onSuccess }: PinPadProps) {
           onClick={() =>
             startSignOutTransition(async () => {
               try {
+                clearPinTabUnlock();
                 await signOutAction();
               } catch (error) {
                 if (!isRedirectError(error)) {

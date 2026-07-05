@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { ensureSuperAdminRole, isSuperAdminEmail } from "@/lib/auth";
 import { AUTH_MESSAGES, mapAuthError } from "@/lib/authErrors";
-import { clearPinSession } from "@/lib/pinSession";
+import { clearPinSession, setPinSession, setPinTabBootstrap } from "@/lib/pinSession";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -83,7 +83,10 @@ export async function signInAction(
   }
 
   await clearLegacyCookies();
-  await clearPinSession();
+  if (data.user) {
+    await setPinSession(data.user.id);
+    await setPinTabBootstrap(data.user.id);
+  }
   redirect("/");
 }
 
@@ -122,9 +125,10 @@ export async function signUpAction(
     await ensureSuperAdminRole(data.user.id, data.user.email ?? email);
   }
 
-  if (data.session) {
+  if (data.session && data.user) {
     await clearLegacyCookies();
-    await clearPinSession();
+    await setPinSession(data.user.id);
+    await setPinTabBootstrap(data.user.id);
     redirect("/");
   }
 

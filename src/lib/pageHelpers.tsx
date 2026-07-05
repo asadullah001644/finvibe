@@ -1,4 +1,5 @@
 import { ClearAppShell } from "@/components/AppShellProvider";
+import PinTabGate from "@/components/PinTabGate";
 import PinUnlock from "@/components/PinUnlock";
 import { getProfileOrDefault, getSessionUser, isSuperAdmin } from "@/lib/auth";
 import { resolveMonthKey } from "@/lib/month";
@@ -13,9 +14,10 @@ interface MonthSearchParams {
 }
 
 export type AppAuthGateState =
-  | { state: "pin_required" }
+  | { state: "pin_required"; userId: string }
   | {
       state: "ready";
+      userId: string;
       user: User;
       profile: Profile;
       pinLockEnabled: boolean;
@@ -40,12 +42,13 @@ export async function getAppAuthGate(): Promise<AppAuthGateState> {
   if (pinLockEnabled) {
     const pinValid = await isPinSessionValid(user.id);
     if (!pinValid) {
-      return { state: "pin_required" };
+      return { state: "pin_required", userId: user.id };
     }
   }
 
   return {
     state: "ready",
+    userId: user.id,
     user,
     profile,
     pinLockEnabled,
@@ -54,9 +57,10 @@ export async function getAppAuthGate(): Promise<AppAuthGateState> {
 }
 
 export type ShellGateState =
-  | { state: "pin_required" }
+  | { state: "pin_required"; userId: string }
   | {
       state: "ready";
+      userId: string;
       monthKey: string;
       monthLabel: string;
       carriedFromMonthLabel?: string;
@@ -71,7 +75,7 @@ export async function getAuthenticatedShellData(
   const [gate, params] = await Promise.all([getAppAuthGate(), searchParams]);
 
   if (gate.state === "pin_required") {
-    return { state: "pin_required" };
+    return { state: "pin_required", userId: gate.userId };
   }
 
   const monthKey = resolveMonthKey(params.month);
@@ -79,6 +83,7 @@ export async function getAuthenticatedShellData(
 
   return {
     state: "ready",
+    userId: gate.userId,
     ...data,
     isSuperAdmin: gate.isSuperAdmin,
     pinLockEnabled: gate.pinLockEnabled,
@@ -96,10 +101,17 @@ export function AuthGate({
     return (
       <>
         <ClearAppShell />
-        <PinUnlock />
+        <PinUnlock userId={gateState.userId} />
       </>
     );
   }
 
-  return <>{children}</>;
+  return (
+    <PinTabGate
+      userId={gateState.userId}
+      pinLockEnabled={gateState.pinLockEnabled}
+    >
+      {children}
+    </PinTabGate>
+  );
 }
