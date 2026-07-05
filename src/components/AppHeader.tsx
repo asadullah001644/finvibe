@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef } from "react";
-import { Calendar, Cpu, Shield } from "lucide-react";
+import Link from "next/link";
+import { Calendar, Cpu, Settings, Shield } from "lucide-react";
 import { usePathname } from "next/navigation";
 import CategoryAllocation from "@/components/CategoryAllocation";
 import IncomeSettings from "@/components/IncomeSettings";
@@ -27,6 +28,7 @@ interface AppHeaderProps {
   onIncomeOpenChange: (open: boolean) => void;
   onCategoriesOpenChange: (open: boolean) => void;
   onRecurringOpenChange: (open: boolean) => void;
+  pinLockEnabled?: boolean;
 }
 
 export default function AppHeader({
@@ -41,6 +43,7 @@ export default function AppHeader({
   onIncomeOpenChange,
   onCategoriesOpenChange,
   onRecurringOpenChange,
+  pinLockEnabled = false,
 }: AppHeaderProps) {
   const { navigate } = useAppNavigation();
   const pathname = usePathname();
@@ -105,7 +108,14 @@ export default function AppHeader({
             isOpen={recurringOpen}
             onOpenChange={onRecurringOpenChange}
           />
-          <LockButton />
+          <Link
+            href="/settings"
+            className="inline-flex items-center justify-center rounded-xl border border-cardBorder bg-card p-2 text-zinc-300 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
+            aria-label="Settings"
+          >
+            <Settings className="h-4 w-4" />
+          </Link>
+          {pinLockEnabled && <LockButton />}
 
           <label
             htmlFor="month"

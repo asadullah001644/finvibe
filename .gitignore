@@ -20,6 +20,10 @@
 # production
 /build
 
+# local DB backups (financial data — never commit)
+/backups/*
+!/backups/.gitkeep
+
 # misc
 .DS_Store
 *.pem

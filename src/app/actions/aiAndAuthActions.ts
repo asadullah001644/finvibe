@@ -2,62 +2,16 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import bcrypt from "bcryptjs";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { resolvePinHash } from "@/lib/pinHash";
-
-const SESSION_COOKIE = "finvibe_session";
-const SESSION_VALUE = "unlocked";
-const SESSION_MAX_AGE = 60 * 60 * 24;
+import { revalidatePath } from "next/cache";
+import { requireAuth, requireSuperAdmin } from "@/lib/auth";
+import { isProfilesTableMissing } from "@/lib/schema";
+import { createClient } from "@/utils/supabase/server";
+import { clearPinSession, setPinSession } from "@/lib/pinSession";
 
 const AUDIT_SYSTEM_INSTRUCTION = `You are a high-end, uncompromising financial systems analyst embedded in a personal capital tracking app.
 Analyze the user's salary, savings goal, category budgets, and spending totals. Deliver a ruthless yet actionable markdown audit of their trajectory.
 Highlight the main leakage vectors and prescribe exactly 3 execution rules to recover the savings goal before month's end.
 Keep it highly concise. Format the entire response in clean Markdown with headings and bullet points.`;
-
-async function hasUnlockedSession(): Promise<boolean> {
-  const cookieStore = await cookies();
-  return cookieStore.get(SESSION_COOKIE)?.value === SESSION_VALUE;
-}
-
-export async function verifyPin(inputPin: string): Promise<boolean> {
-  const { hash: hashedPin, error } = resolvePinHash();
-
-  if (!hashedPin) {
-    if (error === "invalid") {
-      throw new Error(
-        "PIN hash misconfigured on server. On Vercel use APP_SECRET_PIN_HASH_B64 (recommended) or paste the raw bcrypt hash without backslash escapes, then redeploy.",
-      );
-    }
-
-    throw new Error(
-      "PIN hash not configured on server. Add APP_SECRET_PIN_HASH or APP_SECRET_PIN_HASH_B64 in Vercel → Settings → Environment Variables (Production), then redeploy.",
-    );
-  }
-
-  const isMatch = await bcrypt.compare(inputPin, hashedPin);
-
-  if (!isMatch) {
-    return false;
-  }
-
-  const cookieStore = await cookies();
-
-  cookieStore.set(SESSION_COOKIE, SESSION_VALUE, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: SESSION_MAX_AGE,
-    path: "/",
-  });
-
-  redirect("/");
-}
-
-export async function lockSession(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.delete(SESSION_COOKIE);
-}
 
 function buildAuditPrompt(expenses: unknown[], budget: unknown): string {
   const budgetRecord =
@@ -142,16 +96,102 @@ function buildAuditPrompt(expenses: unknown[], budget: unknown): string {
   ].join("\n");
 }
 
+export async function verifyPin(inputPin: string): Promise<boolean> {
+  const { user, profile } = await requireAuth();
+
+  if (!profile.appPinHash) {
+    throw new Error("App PIN is not enabled. Enable it in Settings first.");
+  }
+
+  const isMatch = await bcrypt.compare(inputPin, profile.appPinHash);
+  if (!isMatch) {
+    return false;
+  }
+
+  await setPinSession(user.id);
+  revalidatePath("/", "layout");
+  return true;
+}
+
+export async function lockSession(): Promise<void> {
+  await clearPinSession();
+  revalidatePath("/", "layout");
+}
+
+export async function setAppPinAction(pin: string): Promise<{ success: boolean; error?: string }> {
+  const { user, profile } = await requireAuth();
+
+  if (!/^\d{4}$/.test(pin)) {
+    return { success: false, error: "PIN must be exactly 4 digits." };
+  }
+
+  const hash = await bcrypt.hash(pin, 10);
+  const supabase = await createClient();
+  const role = profile.role;
+  const { error } = await supabase.from("profiles").upsert(
+    {
+      id: user.id,
+      email: user.email ?? profile.email,
+      role,
+      app_pin_hash: hash,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
+
+  if (error) {
+    if (isProfilesTableMissing(error)) {
+      return {
+        success: false,
+        error:
+          "Profiles table not ready. Run supabase/migrations/003_multi_user_foundation.sql first.",
+      };
+    }
+    return { success: false, error: error.message };
+  }
+
+  await setPinSession(user.id);
+  revalidatePath("/", "layout");
+  return { success: true };
+}
+
+export async function clearAppPinAction(): Promise<{ success: boolean; error?: string }> {
+  const { user, profile } = await requireAuth();
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").upsert(
+    {
+      id: user.id,
+      email: user.email ?? profile.email,
+      role: profile.role,
+      app_pin_hash: null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
+
+  if (error) {
+    if (isProfilesTableMissing(error)) {
+      return {
+        success: false,
+        error:
+          "Profiles table not ready. Run supabase/migrations/003_multi_user_foundation.sql first.",
+      };
+    }
+    return { success: false, error: error.message };
+  }
+
+  await clearPinSession();
+  revalidatePath("/", "layout");
+  return { success: true };
+}
+
 export async function runFinancialAudit(
   expenses: unknown[],
   budget: unknown,
 ): Promise<string> {
-  if (!(await hasUnlockedSession())) {
-    throw new Error("Unauthorized session.");
-  }
+  await requireSuperAdmin();
 
   const apiKey = process.env.GEMINI_API_KEY;
-
   if (!apiKey) {
     throw new Error("Missing GEMINI_API_KEY environment variable.");
   }

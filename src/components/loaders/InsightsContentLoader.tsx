@@ -6,11 +6,13 @@ import type { MonthBudget } from "@/lib/loadMonthData";
 interface InsightsContentLoaderProps {
   monthKey: string;
   budget: MonthBudget;
+  isSuperAdmin: boolean;
 }
 
 export default async function InsightsContentLoader({
   monthKey,
   budget,
+  isSuperAdmin,
 }: InsightsContentLoaderProps) {
   const expenses = await loadMonthExpenses(monthKey);
 
@@ -34,7 +36,7 @@ export default async function InsightsContentLoader({
         savingsGoal={budget.savingsGoal}
         expenses={graphExpenses}
       />
-      <AiAudit budget={budget} expenses={auditExpenses} />
+      {isSuperAdmin && <AiAudit budget={budget} expenses={auditExpenses} />}
     </div>
   );
 }

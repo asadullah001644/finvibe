@@ -1,35 +1,71 @@
 import { ClearAppShell } from "@/components/AppShellProvider";
 import PinUnlock from "@/components/PinUnlock";
+import { getProfileOrDefault, getSessionUser } from "@/lib/auth";
 import { resolveMonthKey } from "@/lib/month";
 import { loadMonthShellData } from "@/lib/loadMonthData";
-import { isSessionUnlocked } from "@/lib/requireUnlocked";
+import { isPinSessionValid } from "@/lib/pinSession";
+import { redirect } from "next/navigation";
 
 interface MonthSearchParams {
   month?: string;
 }
 
+export type ShellGateState =
+  | { state: "pin_required" }
+  | {
+      state: "ready";
+      monthKey: string;
+      monthLabel: string;
+      carriedFromMonthLabel?: string;
+      budget: Awaited<ReturnType<typeof loadMonthShellData>>["budget"];
+      isSuperAdmin: boolean;
+      pinLockEnabled: boolean;
+    };
+
 export async function getAuthenticatedShellData(
   searchParams: Promise<MonthSearchParams>,
-) {
-  if (!(await isSessionUnlocked())) {
-    return { locked: true as const };
+): Promise<ShellGateState> {
+  const user = await getSessionUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const profile = await getProfileOrDefault(user);
+
+  if (profile.isDisabled) {
+    redirect("/login?disabled=1");
+  }
+
+  const pinLockEnabled = Boolean(profile.appPinHash);
+
+  if (pinLockEnabled) {
+    const pinValid = await isPinSessionValid(user.id);
+    if (!pinValid) {
+      return { state: "pin_required" };
+    }
   }
 
   const params = await searchParams;
   const monthKey = resolveMonthKey(params.month);
   const data = await loadMonthShellData(monthKey);
 
-  return { locked: false as const, ...data };
+  return {
+    state: "ready",
+    ...data,
+    isSuperAdmin: profile.role === "super_admin",
+    pinLockEnabled,
+  };
 }
 
 export function AuthGate({
-  locked,
+  gateState,
   children,
 }: {
-  locked: boolean;
+  gateState: ShellGateState;
   children: React.ReactNode;
 }) {
-  if (locked) {
+  if (gateState.state === "pin_required") {
     return (
       <>
         <ClearAppShell />

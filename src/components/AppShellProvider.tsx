@@ -33,6 +33,7 @@ export interface AppShellMonthData {
   monthLabel: string;
   carriedFromMonthLabel?: string;
   budget: AppShellBudget;
+  pinLockEnabled?: boolean;
 }
 
 interface AppShellActions {
@@ -69,7 +70,8 @@ function monthDataEquals(
     current.budget.monthKey !== next.budget.monthKey ||
     current.budget.totalSalary !== next.budget.totalSalary ||
     current.budget.savingsGoal !== next.budget.savingsGoal ||
-    current.budget.categories.length !== next.budget.categories.length
+    current.budget.categories.length !== next.budget.categories.length ||
+    current.pinLockEnabled !== next.pinLockEnabled
   ) {
     return false;
   }
@@ -152,7 +154,6 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
     return (
       <AppShellControlContext.Provider value={controlValue}>
         <AppShellActionsContext.Provider value={actions}>
-          <AutoLockListener />
           {children}
         </AppShellActionsContext.Provider>
       </AppShellControlContext.Provider>
@@ -163,7 +164,7 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
     <AppShellControlContext.Provider value={controlValue}>
       <AppShellActionsContext.Provider value={actions}>
         <main className="relative min-h-screen overflow-x-hidden bg-[#09090B] pb-32 text-zinc-100 selection:bg-[#8B5CF6]/30">
-          <AutoLockListener />
+          {monthData.pinLockEnabled && <AutoLockListener />}
 
           <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.12),transparent_70%)]" />
 
@@ -179,6 +180,7 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
             onIncomeOpenChange={setIncomeOpen}
             onCategoriesOpenChange={setCategoriesOpen}
             onRecurringOpenChange={setRecurringOpen}
+            pinLockEnabled={monthData.pinLockEnabled ?? false}
           />
 
           <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-8 pb-24">
@@ -211,6 +213,7 @@ export function MonthDataSync({
   monthLabel,
   carriedFromMonthLabel,
   budget,
+  pinLockEnabled = false,
   children,
 }: MonthDataSyncProps) {
   const control = useContext(AppShellControlContext);
@@ -226,6 +229,7 @@ export function MonthDataSync({
       monthLabel,
       carriedFromMonthLabel,
       budget,
+      pinLockEnabled,
     });
   }, [
     control,
@@ -237,7 +241,7 @@ export function MonthDataSync({
     budget.savingsGoal,
     budget.monthKey,
     categoriesKey,
-    // budget is intentionally omitted — categoriesKey + salary fields cover changes
+    pinLockEnabled,
   ]);
 
   return children;

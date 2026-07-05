@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "FinVibe Engine",
-  description: "Premium Single-Tenant Personal Capital Engine",
+  description: "Personal capital engine with multi-user auth and budget telemetry",
   manifest: "/manifest.json",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],

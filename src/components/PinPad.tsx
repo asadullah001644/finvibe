@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Delete, Loader2 } from "lucide-react";
 import { verifyPin } from "@/app/actions/aiAndAuthActions";
-import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { useRouter } from "next/navigation";
 
 interface PinPadProps {
   onSuccess?: () => void;
@@ -16,6 +16,7 @@ const KEYPAD_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 type PinPhase = "idle" | "verifying" | "unlocking" | "error";
 
 export default function PinPad({ onSuccess }: PinPadProps) {
+  const router = useRouter();
   const onSuccessRef = useRef(onSuccess);
 
   useEffect(() => {
@@ -42,18 +43,17 @@ export default function PinPad({ onSuccess }: PinPadProps) {
     try {
       const success = await verifyPin(pinValue);
 
-      if (!success) {
-        setPhase("error");
-        setShake(true);
-        setPin("");
-      }
-    } catch (error) {
-      if (isRedirectError(error)) {
-        setIsRedirecting(true);
+      if (success) {
+        setPhase("unlocking");
         onSuccessRef.current?.();
+        router.refresh();
         return;
       }
 
+      setPhase("error");
+      setShake(true);
+      setPin("");
+    } catch (error) {
       setPhase("error");
       setShake(true);
       setPin("");
@@ -61,7 +61,7 @@ export default function PinPad({ onSuccess }: PinPadProps) {
         error instanceof Error ? error.message : "Verification failed.",
       );
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!shake) {

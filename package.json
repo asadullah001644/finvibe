@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "backup:db": "node scripts/backup-db.mjs",
+    "test:db": "node scripts/test-db-operations.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

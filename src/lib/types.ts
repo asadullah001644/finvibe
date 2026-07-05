@@ -39,3 +39,16 @@ export interface RecurringExpense {
   description: string;
   isActive: boolean;
 }
+
+export type UserRole = "user" | "super_admin";
+
+export interface Profile {
+  id: string;
+  email: string;
+  role: UserRole;
+  isDisabled: boolean;
+  appPinHash: string | null;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+}

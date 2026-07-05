@@ -1,6 +1,5 @@
 "use server";
 
-import { cookies } from "next/headers";
 import {
   addExpense,
   deleteExpense,
@@ -17,10 +16,8 @@ import {
 } from "@/actions/dbActions";
 import { DEFAULT_CATEGORIES } from "@/lib/constants";
 import { isValidExpenseId, parseExpenseDate } from "@/lib/expenseDate";
+import { actionSessionError, isActionSessionValid } from "@/lib/sessionGuard";
 import type { Budget, BudgetCategory, RecurringExpense, SerializedExpense } from "@/lib/types";
-
-const SESSION_COOKIE = "finvibe_session";
-const SESSION_VALUE = "unlocked";
 
 export interface ExpenseInput {
   amount: number;
@@ -59,14 +56,11 @@ export interface ActionResult {
 }
 
 async function hasValidSession(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const session = cookieStore.get(SESSION_COOKIE);
-
-  return session?.value === SESSION_VALUE;
+  return isActionSessionValid();
 }
 
 function sessionError(): ActionResult {
-  return { success: false, error: "Session expired. Unlock the app and try again." };
+  return actionSessionError();
 }
 
 function validateExpenseInput(

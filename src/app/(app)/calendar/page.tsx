@@ -13,20 +13,21 @@ interface CalendarPageProps {
 export default async function CalendarPage({ searchParams }: CalendarPageProps) {
   const shellData = await getAuthenticatedShellData(searchParams);
 
-  if (shellData.locked) {
-    return <AuthGate locked>{null}</AuthGate>;
+  if (shellData.state === "pin_required") {
+    return <AuthGate gateState={shellData}>{null}</AuthGate>;
   }
 
-  const { monthKey, monthLabel, budget, carriedFromMonthLabel } = shellData;
+  const { monthKey, monthLabel, budget, carriedFromMonthLabel, pinLockEnabled } = shellData;
 
   return (
-    <AuthGate locked={false}>
+    <AuthGate gateState={shellData}>
       <MonthDataSync
         activeTab="calendar"
         monthKey={monthKey}
         monthLabel={monthLabel}
         carriedFromMonthLabel={carriedFromMonthLabel}
         budget={budget}
+        pinLockEnabled={pinLockEnabled}
       >
         <ExpenseContentSuspense>
           <CalendarContentLoader monthKey={monthKey} budget={budget} />
