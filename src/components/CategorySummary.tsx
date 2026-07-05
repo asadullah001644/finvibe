@@ -1,10 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowRight, LayoutList } from "lucide-react";
-import { useState } from "react";
-import CategoryBreakdownModal from "@/components/CategoryBreakdownModal";
+import { AlertTriangle, ArrowRight } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import {
   getOverviewCategoryHighlights,
@@ -94,9 +91,6 @@ export default function CategorySummary({
   expenses,
   onOpenCategories,
 }: CategorySummaryProps) {
-  const router = useRouter();
-  const [breakdownOpen, setBreakdownOpen] = useState(false);
-
   const { topSpenders, overBudget, totalSpent, hasLimitsSet } =
     getOverviewCategoryHighlights(categories, expenses);
 
@@ -110,107 +104,84 @@ export default function CategorySummary({
   }
 
   return (
-    <>
-      <section className="rounded-2xl border border-cardBorder bg-card/60 p-4 sm:p-5">
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonEmerald/80">
-              Spending Snapshot
-            </p>
-            <p className="mt-1 text-sm text-zinc-500">
-              Top categories this month — tap for details
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+    <section className="rounded-2xl border border-cardBorder bg-card/60 p-4 sm:p-5">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonEmerald/80">
+            Spending Snapshot
+          </p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Top categories this month — tap for details
+          </p>
+        </div>
+        <Link
+          href={buildCategoriesUrl(monthKey)}
+          className="inline-flex items-center gap-1 rounded-lg border border-neonEmerald/30 bg-neonEmerald/10 px-3 py-1.5 text-xs font-medium text-neonEmerald transition-colors hover:bg-neonEmerald/20"
+        >
+          Browse expenses
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+
+      {totalSpent === 0 ? (
+        <div className="space-y-3">
+          <p className="text-sm text-zinc-500">
+            No spending logged yet this month.
+          </p>
+          {onOpenCategories && !hasLimitsSet && (
             <button
               type="button"
-              onClick={() => setBreakdownOpen(true)}
-              className="inline-flex items-center gap-1 rounded-lg border border-cardBorder bg-background/60 px-3 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:border-neonEmerald/30 hover:text-neonEmerald"
+              onClick={onOpenCategories}
+              className="text-sm font-medium text-neonViolet transition-colors hover:text-neonViolet/80"
             >
-              <LayoutList className="h-3.5 w-3.5" />
-              Breakdown
+              Set category limits (optional)
             </button>
-            <Link
-              href={buildCategoriesUrl(monthKey)}
-              className="inline-flex items-center gap-1 rounded-lg border border-neonEmerald/30 bg-neonEmerald/10 px-3 py-1.5 text-xs font-medium text-neonEmerald transition-colors hover:bg-neonEmerald/20"
-            >
-              Browse expenses
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
+          )}
         </div>
+      ) : (
+        <div className="space-y-5">
+          {overBudget.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-neonCrimson/90">
+                Over budget
+              </p>
+              <ul className="space-y-1">
+                {overBudget.map((row) => (
+                  <SummaryRow
+                    key={row.name}
+                    row={row}
+                    monthKey={monthKey}
+                    showLimit
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
 
-        {totalSpent === 0 ? (
-          <div className="space-y-3">
-            <p className="text-sm text-zinc-500">
-              No spending logged yet this month.
-            </p>
-            {onOpenCategories && !hasLimitsSet && (
-              <button
-                type="button"
-                onClick={onOpenCategories}
-                className="text-sm font-medium text-neonViolet transition-colors hover:text-neonViolet/80"
-              >
-                Set category limits (optional)
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {overBudget.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-neonCrimson/90">
-                  Over budget
-                </p>
-                <ul className="space-y-1">
-                  {overBudget.map((row) => (
-                    <SummaryRow
-                      key={row.name}
-                      row={row}
-                      monthKey={monthKey}
-                      showLimit
-                    />
-                  ))}
-                </ul>
-              </div>
-            )}
+          {topWithoutDuplicates.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                {overBudget.length > 0 ? "Also spending most" : "Top spending"}
+              </p>
+              <ul className="space-y-1">
+                {topWithoutDuplicates.map((row) => (
+                  <SummaryRow key={row.name} row={row} monthKey={monthKey} />
+                ))}
+              </ul>
+            </div>
+          )}
 
-            {topWithoutDuplicates.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  {overBudget.length > 0 ? "Also spending most" : "Top spending"}
-                </p>
-                <ul className="space-y-1">
-                  {topWithoutDuplicates.map((row) => (
-                    <SummaryRow key={row.name} row={row} monthKey={monthKey} />
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {!hasLimitsSet && onOpenCategories && (
-              <button
-                type="button"
-                onClick={onOpenCategories}
-                className="text-sm text-zinc-500 transition-colors hover:text-neonEmerald"
-              >
-                Optional: set category limits →
-              </button>
-            )}
-          </div>
-        )}
-      </section>
-
-      <CategoryBreakdownModal
-        isOpen={breakdownOpen}
-        onClose={() => setBreakdownOpen(false)}
-        categories={categories}
-        expenses={expenses}
-        onOpenCategories={onOpenCategories}
-        onCategorySelect={(categoryName) => {
-          router.push(buildCategoriesUrl(monthKey, { category: categoryName }));
-        }}
-      />
-    </>
+          {!hasLimitsSet && onOpenCategories && (
+            <button
+              type="button"
+              onClick={onOpenCategories}
+              className="text-sm text-zinc-500 transition-colors hover:text-neonEmerald"
+            >
+              Optional: set category limits →
+            </button>
+          )}
+        </div>
+      )}
+    </section>
   );
 }

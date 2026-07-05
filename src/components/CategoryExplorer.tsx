@@ -2,7 +2,7 @@
 
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
-import { Filter, Pencil, Trash2, X } from "lucide-react";
+import { Filter, Check, Pencil, Trash2, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -14,7 +14,6 @@ import {
   CATEGORY_SEPARATOR,
   getCategoryGroups,
   getChildCategoryName,
-  getParentCategoryName,
   resolveCategoryHint,
 } from "@/lib/constants";
 import { formatCurrency, formatCurrencyPrecise } from "@/lib/currency";
@@ -47,14 +46,6 @@ function normalizeExpenseDate(date: Date | string): Date {
   return date instanceof Date ? date : new Date(date);
 }
 
-function inferGroupFromCategory(category: string): CategoryFilterGroup {
-  const parent = getParentCategoryName(category);
-  if (parent === "Home" || parent === "Flat") {
-    return parent;
-  }
-  return "General";
-}
-
 function expenseMatchesGroup(
   expense: ExplorerExpense,
   group: CategoryFilterGroup,
@@ -73,13 +64,32 @@ function expenseMatchesGroup(
 function expenseMatchesFilter(
   expense: ExplorerExpense,
   group: CategoryFilterGroup,
-  category: string | null,
+  categories: string[],
 ): boolean {
-  if (category) {
-    return expense.category === category;
+  if (categories.length > 0) {
+    return categories.includes(expense.category);
   }
 
   return expenseMatchesGroup(expense, group);
+}
+
+function formatFilterLabel(
+  activeGroup: CategoryFilterGroup,
+  activeCategories: string[],
+): string {
+  if (activeCategories.length === 1) {
+    return getChildCategoryName(activeCategories[0]!);
+  }
+
+  if (activeCategories.length > 1) {
+    return `${activeCategories.length} categories`;
+  }
+
+  if (activeGroup === "all") {
+    return "All categories";
+  }
+
+  return activeGroup;
 }
 
 function ExpenseEditForm({
@@ -218,9 +228,10 @@ interface CategoryFilterModalProps {
   onClose: () => void;
   categoryNames: string[];
   activeGroup: CategoryFilterGroup;
-  activeCategory: string | null;
+  activeCategories: string[];
   onGroupChange: (group: CategoryFilterGroup) => void;
-  onCategoryChange: (category: string | null) => void;
+  onCategoryToggle: (category: string) => void;
+  onClearFilters: () => void;
 }
 
 function CategoryFilterModal({
@@ -228,9 +239,10 @@ function CategoryFilterModal({
   onClose,
   categoryNames,
   activeGroup,
-  activeCategory,
+  activeCategories,
   onGroupChange,
-  onCategoryChange,
+  onCategoryToggle,
+  onClearFilters,
 }: CategoryFilterModalProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -313,16 +325,14 @@ function CategoryFilterModal({
               </p>
               <div className="mb-5 flex flex-wrap gap-2">
                 {GROUP_FILTERS.map((filter) => {
-                  const isActive = activeGroup === filter.id && !activeCategory;
+                  const isActive =
+                    activeCategories.length === 0 && activeGroup === filter.id;
 
                   return (
                     <button
                       key={filter.id}
                       type="button"
-                      onClick={() => {
-                        onGroupChange(filter.id);
-                        onClose();
-                      }}
+                      onClick={() => onGroupChange(filter.id)}
                       className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                         isActive
                           ? "border-neonViolet bg-neonViolet/15 text-neonViolet"
@@ -336,23 +346,11 @@ function CategoryFilterModal({
               </div>
 
               <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
-                Specific category
+                Specific categories
+                <span className="ml-1 normal-case tracking-normal text-zinc-600">
+                  (select multiple)
+                </span>
               </p>
-
-              <button
-                type="button"
-                onClick={() => {
-                  onCategoryChange(null);
-                  onClose();
-                }}
-                className={`mb-3 w-full rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-colors ${
-                  !activeCategory
-                    ? "border-neonEmerald/40 bg-neonEmerald/10 text-neonEmerald"
-                    : "border-cardBorder bg-background text-zinc-300 hover:border-neonEmerald/30"
-                }`}
-              >
-                All in current group
-              </button>
 
               <div className="space-y-4">
                 {categoryGroups.map((group) => (
@@ -364,37 +362,45 @@ function CategoryFilterModal({
                     )}
                     <div className="space-y-1">
                       {group.items.map((name) => {
-                        const isActive = activeCategory === name;
+                        const isActive = activeCategories.includes(name);
                         const hint = resolveCategoryHint(name);
 
                         return (
                           <button
                             key={name}
                             type="button"
-                            onClick={() => {
-                              onCategoryChange(name);
-                              onClose();
-                            }}
-                            className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                            onClick={() => onCategoryToggle(name)}
+                            className={`flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${
                               isActive
                                 ? "border-neonEmerald/40 bg-neonEmerald/10"
                                 : "border-cardBorder bg-background/60 hover:border-neonViolet/30"
                             }`}
                           >
                             <span
-                              className={`block text-sm font-medium ${
-                                isActive ? "text-neonEmerald" : "text-zinc-200"
+                              className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                                isActive
+                                  ? "border-neonEmerald bg-neonEmerald text-background"
+                                  : "border-cardBorder bg-background"
                               }`}
                             >
-                              {group.label
-                                ? getChildCategoryName(name)
-                                : name}
+                              {isActive && <Check className="h-3 w-3" />}
                             </span>
-                            {hint && (
-                              <span className="mt-0.5 block text-xs text-zinc-500">
-                                {hint}
+                            <span className="min-w-0 flex-1">
+                              <span
+                                className={`block text-sm font-medium ${
+                                  isActive ? "text-neonEmerald" : "text-zinc-200"
+                                }`}
+                              >
+                                {group.label
+                                  ? getChildCategoryName(name)
+                                  : name}
                               </span>
-                            )}
+                              {hint && (
+                                <span className="mt-0.5 block text-xs text-zinc-500">
+                                  {hint}
+                                </span>
+                              )}
+                            </span>
                           </button>
                         );
                       })}
@@ -402,6 +408,26 @@ function CategoryFilterModal({
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-cardBorder px-5 py-4">
+              <button
+                type="button"
+                onClick={onClearFilters}
+                disabled={
+                  activeCategories.length === 0 && activeGroup === "all"
+                }
+                className="text-sm text-zinc-500 transition-colors hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Clear all
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg border border-neonViolet/40 bg-neonViolet/15 px-4 py-2 text-sm font-medium text-neonViolet transition-colors hover:bg-neonViolet/25"
+              >
+                Done
+              </button>
             </div>
           </motion.div>
         </>
@@ -425,7 +451,7 @@ export default function CategoryExplorer({
   const searchParams = useSearchParams();
 
   const activeGroup = (searchParams.get("group") as CategoryFilterGroup) || "all";
-  const activeCategory = searchParams.get("category");
+  const activeCategories = searchParams.getAll("category");
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -433,21 +459,16 @@ export default function CategoryExplorer({
   const [filterOpen, setFilterOpen] = useState(false);
 
   const filteredExpenses = useMemo(() => {
-    const resolvedGroup =
-      activeCategory && activeGroup === "all"
-        ? inferGroupFromCategory(activeCategory)
-        : activeGroup;
-
     return expenses
       .filter((expense) =>
-        expenseMatchesFilter(expense, resolvedGroup, activeCategory),
+        expenseMatchesFilter(expense, activeGroup, activeCategories),
       )
       .sort(
         (left, right) =>
           normalizeExpenseDate(right.date).getTime() -
           normalizeExpenseDate(left.date).getTime(),
       );
-  }, [activeCategory, activeGroup, expenses]);
+  }, [activeCategories, activeGroup, expenses]);
 
   const totalSpent = filteredExpenses.reduce(
     (sum, expense) => sum + expense.amount,
@@ -457,26 +478,29 @@ export default function CategoryExplorer({
   const spendShare =
     monthlyTotal > 0 ? Math.round((totalSpent / monthlyTotal) * 100) : 0;
 
-  const updateFilters = (group: CategoryFilterGroup, category?: string | null) => {
+  const updateFilters = (group: CategoryFilterGroup, categories: string[]) => {
     router.push(
       buildCategoriesUrl(monthKey, {
         group: group === "all" ? undefined : group,
-        category: category ?? undefined,
+        categories: categories.length > 0 ? categories : undefined,
       }),
     );
   };
 
   const handleGroupChange = (group: CategoryFilterGroup) => {
-    updateFilters(group, null);
+    updateFilters(group, []);
   };
 
-  const handleCategoryChange = (category: string | null) => {
-    if (!category) {
-      updateFilters(activeGroup === "all" ? "all" : activeGroup, null);
-      return;
-    }
+  const handleCategoryToggle = (category: string) => {
+    const next = activeCategories.includes(category)
+      ? activeCategories.filter((name) => name !== category)
+      : [...activeCategories, category];
 
-    updateFilters(inferGroupFromCategory(category), category);
+    updateFilters("all", next);
+  };
+
+  const handleClearFilters = () => {
+    updateFilters("all", []);
   };
 
   const handleDelete = async (id: string) => {
@@ -501,11 +525,7 @@ export default function CategoryExplorer({
     router.refresh();
   };
 
-  const filterLabel = activeCategory
-    ? getChildCategoryName(activeCategory)
-    : activeGroup === "all"
-      ? "All categories"
-      : activeGroup;
+  const filterLabel = formatFilterLabel(activeGroup, activeCategories);
 
   return (
     <section className="rounded-2xl border border-cardBorder bg-card/60 p-4 sm:p-5">
@@ -533,9 +553,10 @@ export default function CategoryExplorer({
         onClose={() => setFilterOpen(false)}
         categoryNames={categoryNames}
         activeGroup={activeGroup}
-        activeCategory={activeCategory}
+        activeCategories={activeCategories}
         onGroupChange={handleGroupChange}
-        onCategoryChange={handleCategoryChange}
+        onCategoryToggle={handleCategoryToggle}
+        onClearFilters={handleClearFilters}
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3">

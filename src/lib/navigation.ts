@@ -14,15 +14,26 @@ export const APP_TABS: Array<{
 export function buildMonthUrl(
   pathname: string,
   monthKey: string,
-  extraParams?: Record<string, string | undefined>,
+  extraParams?: Record<string, string | string[] | undefined>,
 ): string {
   const params = new URLSearchParams({ month: monthKey });
 
   if (extraParams) {
     for (const [key, value] of Object.entries(extraParams)) {
-      if (value) {
-        params.set(key, value);
+      if (!value) {
+        continue;
       }
+
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item) {
+            params.append(key, item);
+          }
+        }
+        continue;
+      }
+
+      params.set(key, value);
     }
   }
 
@@ -31,10 +42,14 @@ export function buildMonthUrl(
 
 export function buildCategoriesUrl(
   monthKey: string,
-  options?: { group?: string; category?: string },
+  options?: { group?: string; category?: string; categories?: string[] },
 ): string {
+  const categories =
+    options?.categories ??
+    (options?.category ? [options.category] : undefined);
+
   return buildMonthUrl("/categories", monthKey, {
     group: options?.group,
-    category: options?.category,
+    category: categories,
   });
 }
