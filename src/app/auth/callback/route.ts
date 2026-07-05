@@ -24,6 +24,12 @@ export async function GET(request: Request) {
       const safeNext = next.startsWith("/") ? next : "/";
       return NextResponse.redirect(`${origin}${safeNext}`);
     }
+
+    console.error("auth/callback:", error.code, error.message);
+
+    if (next.startsWith("/reset-password")) {
+      return NextResponse.redirect(`${origin}/reset-password?error=session_expired`);
+    }
   }
 
   return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);

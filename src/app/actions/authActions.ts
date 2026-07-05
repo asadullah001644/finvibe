@@ -2,10 +2,18 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { ensureSuperAdminRole, isSuperAdminEmail } from "@/lib/auth";
-import { AUTH_MESSAGES, mapAuthError } from "@/lib/authErrors";
+import {
+  AUTH_FALLBACK,
+  AUTH_MESSAGES,
+  AUTH_VALIDATION,
+  mapAuthError,
+  validateAuthEmail,
+  validateAuthPassword,
+} from "@/lib/authErrors";
 import { clearPinSession, setPinSession, setPinTabBootstrap } from "@/lib/pinSession";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 export interface AuthActionResult {
   success: boolean;
@@ -14,17 +22,6 @@ export interface AuthActionResult {
 }
 
 const LEGACY_PIN_COOKIE = "finvibe_session";
-
-function validateEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-}
-
-function validatePassword(password: string): string | null {
-  if (password.length < 8) {
-    return "Password must be at least 8 characters.";
-  }
-  return null;
-}
 
 function getOrigin(): string {
   return (
@@ -42,52 +39,57 @@ export async function signInAction(
   email: string,
   password: string,
 ): Promise<AuthActionResult> {
-  if (!validateEmail(email)) {
-    return { success: false, error: "Enter a valid email address." };
+  const emailError = validateAuthEmail(email);
+  if (emailError) {
+    return { success: false, error: emailError };
   }
 
   if (!password) {
-    return { success: false, error: "Enter your password." };
+    return { success: false, error: AUTH_VALIDATION.passwordRequired };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: email.trim(),
-    password,
-  });
+  const normalizedEmail = email.trim();
 
-  if (error) {
-    const mapped = mapAuthError(error);
-    if (mapped === "Invalid email or password.") {
-      return {
-        success: false,
-        error: "Invalid email or password. If you are new, create an account first.",
-      };
-    }
-    return { success: false, error: mapped };
-  }
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
 
-  if (data.user) {
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("is_disabled")
-      .eq("id", data.user.id)
-      .maybeSingle();
-
-    if (!profileError && profile?.is_disabled) {
-      await supabase.auth.signOut();
-      return { success: false, error: "Your account has been disabled. Contact support." };
+    if (error) {
+      console.error("signInAction:", error.code, error.message);
+      return { success: false, error: mapAuthError(error, "signin") };
     }
 
-    await ensureSuperAdminRole(data.user.id, data.user.email ?? email);
-  }
+    if (data.user) {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("is_disabled")
+        .eq("id", data.user.id)
+        .maybeSingle();
 
-  await clearLegacyCookies();
-  if (data.user) {
-    await setPinSession(data.user.id);
-    await setPinTabBootstrap(data.user.id);
+      if (!profileError && profile?.is_disabled) {
+        await supabase.auth.signOut();
+        return { success: false, error: AUTH_MESSAGES.accountDisabled };
+      }
+
+      await ensureSuperAdminRole(data.user.id, data.user.email ?? normalizedEmail);
+    }
+
+    await clearLegacyCookies();
+    if (data.user) {
+      await setPinSession(data.user.id);
+      await setPinTabBootstrap(data.user.id);
+    }
+    redirect("/");
+  } catch (err) {
+    if (isRedirectError(err)) {
+      throw err;
+    }
+    console.error("signInAction unexpected:", err);
+    return { success: false, error: AUTH_FALLBACK.signIn };
   }
-  redirect("/");
 }
 
 export async function signUpAction(
@@ -95,52 +97,63 @@ export async function signUpAction(
   password: string,
   confirmPassword: string,
 ): Promise<AuthActionResult> {
-  if (!validateEmail(email)) {
-    return { success: false, error: "Enter a valid email address." };
+  const emailError = validateAuthEmail(email);
+  if (emailError) {
+    return { success: false, error: emailError };
   }
 
-  const passwordError = validatePassword(password);
+  const passwordError = validateAuthPassword(password);
   if (passwordError) {
     return { success: false, error: passwordError };
   }
 
   if (password !== confirmPassword) {
-    return { success: false, error: "Passwords do not match." };
+    return { success: false, error: AUTH_VALIDATION.passwordMismatch };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({
-    email: email.trim(),
-    password,
-    options: {
-      emailRedirectTo: `${getOrigin()}/auth/callback`,
-    },
-  });
+  const normalizedEmail = email.trim();
 
-  if (error) {
-    return { success: false, error: mapAuthError(error) };
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.signUp({
+      email: normalizedEmail,
+      password,
+      options: {
+        emailRedirectTo: `${getOrigin()}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      console.error("signUpAction:", error.code, error.message);
+      return { success: false, error: mapAuthError(error, "signup") };
+    }
+
+    if (data.user) {
+      await ensureSuperAdminRole(data.user.id, data.user.email ?? normalizedEmail);
+    }
+
+    if (data.session && data.user) {
+      await clearLegacyCookies();
+      await setPinSession(data.user.id);
+      await setPinTabBootstrap(data.user.id);
+      redirect("/");
+    }
+
+    if (isSuperAdminEmail(normalizedEmail)) {
+      return {
+        success: true,
+        message: AUTH_MESSAGES.signUpSuperAdminConfirm,
+      };
+    }
+
+    return { success: true, message: AUTH_MESSAGES.signUpConfirmEmail };
+  } catch (err) {
+    if (isRedirectError(err)) {
+      throw err;
+    }
+    console.error("signUpAction unexpected:", err);
+    return { success: false, error: AUTH_FALLBACK.signUp };
   }
-
-  if (data.user) {
-    await ensureSuperAdminRole(data.user.id, data.user.email ?? email);
-  }
-
-  if (data.session && data.user) {
-    await clearLegacyCookies();
-    await setPinSession(data.user.id);
-    await setPinTabBootstrap(data.user.id);
-    redirect("/");
-  }
-
-  if (isSuperAdminEmail(email)) {
-    return {
-      success: true,
-      message:
-        "Account created. If email confirmation is enabled in Supabase, check your inbox first, then sign in.",
-    };
-  }
-
-  return { success: true, message: AUTH_MESSAGES.signupConfirmEmail };
 }
 
 export async function signOutAction(): Promise<void> {
@@ -152,41 +165,85 @@ export async function signOutAction(): Promise<void> {
 }
 
 export async function forgotPasswordAction(email: string): Promise<AuthActionResult> {
-  if (!validateEmail(email)) {
-    return { success: false, error: "Enter a valid email address." };
+  const emailError = validateAuthEmail(email);
+  if (emailError) {
+    return { success: false, error: emailError };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-    redirectTo: `${getOrigin()}/auth/callback?next=/reset-password`,
-  });
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${getOrigin()}/auth/callback?next=/reset-password`,
+    });
 
-  if (error) {
-    console.error("forgotPasswordAction:", error);
+    if (error) {
+      console.error("forgotPasswordAction:", error.code, error.message);
+
+      if (
+        error.code === "over_email_send_rate_limit" ||
+        error.code === "over_request_rate_limit" ||
+        (error.message ?? "").toLowerCase().includes("rate limit")
+      ) {
+        return { success: false, error: mapAuthError(error, "forgot") };
+      }
+
+      if (
+        error.code === "email_address_invalid" ||
+        (error.message ?? "").toLowerCase().includes("invalid email")
+      ) {
+        return { success: false, error: AUTH_VALIDATION.emailInvalid };
+      }
+
+      return { success: false, error: mapAuthError(error, "forgot") };
+    }
+
+    return { success: true, message: AUTH_MESSAGES.forgotPasswordSuccess };
+  } catch (err) {
+    console.error("forgotPasswordAction unexpected:", err);
+    return { success: false, error: AUTH_FALLBACK.forgotPassword };
   }
-
-  return { success: true, message: AUTH_MESSAGES.forgotPasswordSuccess };
 }
 
 export async function resetPasswordAction(
   password: string,
   confirmPassword: string,
 ): Promise<AuthActionResult> {
-  const passwordError = validatePassword(password);
+  const passwordError = validateAuthPassword(password);
   if (passwordError) {
     return { success: false, error: passwordError };
   }
 
   if (password !== confirmPassword) {
-    return { success: false, error: "Passwords do not match." };
+    return { success: false, error: AUTH_VALIDATION.passwordMismatch };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password });
+  try {
+    const supabase = await createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  if (error) {
-    return { success: false, error: mapAuthError(error) };
+    if (!session) {
+      return {
+        success: false,
+        error:
+          "Your reset link expired or was already used. Request a new password reset email.",
+      };
+    }
+
+    const { error } = await supabase.auth.updateUser({ password });
+
+    if (error) {
+      console.error("resetPasswordAction:", error.code, error.message);
+      return { success: false, error: mapAuthError(error, "reset") };
+    }
+
+    redirect("/login?reset=success");
+  } catch (err) {
+    if (isRedirectError(err)) {
+      throw err;
+    }
+    console.error("resetPasswordAction unexpected:", err);
+    return { success: false, error: AUTH_FALLBACK.resetPassword };
   }
-
-  redirect("/login?reset=success");
 }

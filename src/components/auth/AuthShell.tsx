@@ -42,6 +42,7 @@ interface AuthFieldProps {
   onChange: (value: string) => void;
   autoComplete?: string;
   required?: boolean;
+  disabled?: boolean;
 }
 
 export function AuthField({
@@ -52,6 +53,7 @@ export function AuthField({
   onChange,
   autoComplete,
   required = true,
+  disabled = false,
 }: AuthFieldProps) {
   return (
     <label className="block">
@@ -65,7 +67,8 @@ export function AuthField({
         onChange={(event) => onChange(event.target.value)}
         autoComplete={autoComplete}
         required={required}
-        className="w-full rounded-xl border border-[#27272A] bg-[#09090B] px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-[#8B5CF6]/60 focus:ring-2 focus:ring-[#8B5CF6]/20"
+        disabled={disabled}
+        className="w-full rounded-xl border border-[#27272A] bg-[#09090B] px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-[#8B5CF6]/60 focus:ring-2 focus:ring-[#8B5CF6]/20 disabled:cursor-not-allowed disabled:opacity-50"
       />
     </label>
   );
@@ -91,15 +94,17 @@ export function AuthSubmitButton({
   label,
   pendingLabel = "Please wait...",
   pending,
+  disabled = false,
 }: {
   label: string;
   pendingLabel?: string;
   pending: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       className="w-full rounded-xl bg-[#8B5CF6] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#7C3AED] disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? pendingLabel : label}

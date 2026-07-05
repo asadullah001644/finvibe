@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { signUpAction } from "@/app/actions/authActions";
+import { AUTH_FALLBACK } from "@/lib/authErrors";
 import AuthShell, {
   AuthError,
   AuthField,
@@ -30,11 +31,11 @@ export default function SignUpPage() {
       if (result.success) {
         setMessage(result.message ?? "Account created.");
       } else {
-        setError(result.error ?? "Sign up failed.");
+        setError(result.error ?? AUTH_FALLBACK.signUp);
       }
     } catch (err) {
       if (isRedirectError(err)) throw err;
-      setError(err instanceof Error ? err.message : "Sign up failed.");
+      setError(err instanceof Error ? err.message : AUTH_FALLBACK.signUp);
     } finally {
       setPending(false);
     }
@@ -79,9 +80,15 @@ export default function SignUpPage() {
           autoComplete="new-password"
         />
 
-        <p className="text-xs text-zinc-500">Password must be at least 8 characters.</p>
+        <p className="text-xs text-zinc-500">
+          Use at least 8 characters. Avoid common passwords (for example 12345678).
+        </p>
 
-        <AuthSubmitButton label="Create account" pending={pending} />
+        <AuthSubmitButton
+          label="Create account"
+          pending={pending}
+          pendingLabel="Creating account..."
+        />
       </form>
     </AuthShell>
   );

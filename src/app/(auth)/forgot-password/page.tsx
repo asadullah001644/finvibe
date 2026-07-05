@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { forgotPasswordAction } from "@/app/actions/authActions";
+import { AUTH_FALLBACK } from "@/lib/authErrors";
 import AuthShell, {
   AuthError,
   AuthField,
@@ -22,13 +23,17 @@ export default function ForgotPasswordPage() {
     setError(null);
     setMessage(null);
 
-    const result = await forgotPasswordAction(email);
-    setPending(false);
-
-    if (result.success) {
-      setMessage(result.message ?? "Reset link sent.");
-    } else {
-      setError(result.error ?? "Could not send reset link.");
+    try {
+      const result = await forgotPasswordAction(email);
+      if (result.success) {
+        setMessage(result.message ?? "Reset link sent.");
+      } else {
+        setError(result.error ?? AUTH_FALLBACK.forgotPassword);
+      }
+    } catch {
+      setError(AUTH_FALLBACK.forgotPassword);
+    } finally {
+      setPending(false);
     }
   }
 
@@ -55,7 +60,11 @@ export default function ForgotPasswordPage() {
           autoComplete="email"
         />
 
-        <AuthSubmitButton label="Send reset link" pending={pending} />
+        <AuthSubmitButton
+          label="Send reset link"
+          pending={pending}
+          pendingLabel="Sending link..."
+        />
       </form>
     </AuthShell>
   );

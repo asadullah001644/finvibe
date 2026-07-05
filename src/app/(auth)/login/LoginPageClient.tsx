@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signInAction } from "@/app/actions/authActions";
 import { createClient } from "@/utils/supabase/client";
+import {
+  AUTH_FALLBACK,
+  AUTH_MESSAGES,
+  getAuthQueryError,
+} from "@/lib/authErrors";
 import AuthShell, {
   AuthError,
   AuthField,
@@ -24,6 +29,7 @@ export default function LoginPageClient() {
 
   const resetSuccess = searchParams.get("reset") === "success";
   const disabled = searchParams.get("disabled") === "1";
+  const queryError = getAuthQueryError(searchParams.get("error"));
 
   useEffect(() => {
     let cancelled = false;
@@ -61,11 +67,11 @@ export default function LoginPageClient() {
     try {
       const result = await signInAction(email, password);
       if (!result.success) {
-        setError(result.error ?? "Sign in failed.");
+        setError(result.error ?? AUTH_FALLBACK.signIn);
       }
     } catch (err) {
       if (isRedirectError(err)) throw err;
-      setError(err instanceof Error ? err.message : "Sign in failed.");
+      setError(err instanceof Error ? err.message : AUTH_FALLBACK.signIn);
     } finally {
       setPending(false);
     }
@@ -90,10 +96,11 @@ export default function LoginPageClient() {
       }
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
-        {resetSuccess && <AuthSuccess message="Password updated. Sign in with your new password." />}
-        {disabled && (
-          <AuthError message="Your account has been disabled. Contact support." />
+        {resetSuccess && (
+          <AuthSuccess message={AUTH_MESSAGES.resetPasswordSuccessLogin} />
         )}
+        {disabled && <AuthError message={AUTH_MESSAGES.accountDisabled} />}
+        {queryError && <AuthError message={queryError} />}
         {error && <AuthError message={error} />}
 
         <AuthField
@@ -117,7 +124,7 @@ export default function LoginPageClient() {
           <AuthLink href="/forgot-password">Forgot password?</AuthLink>
         </div>
 
-        <AuthSubmitButton label="Sign in" pending={pending} />
+        <AuthSubmitButton label="Sign in" pending={pending} pendingLabel="Signing in..." />
       </form>
     </AuthShell>
   );
