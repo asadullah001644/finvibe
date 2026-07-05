@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import NavigationLoadingProvider from "@/components/NavigationLoadingProvider";
+import SupabaseSessionSync from "@/components/SupabaseSessionSync";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -46,7 +47,10 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Suspense fallback={null}>
-          <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
+          <NavigationLoadingProvider>
+            <SupabaseSessionSync />
+            {children}
+          </NavigationLoadingProvider>
         </Suspense>
       </body>
     </html>

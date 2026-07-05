@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import type { Profile, UserRole } from "@/lib/types";
 import { isProfilesTableMissing } from "@/lib/schema";
+import { getSessionUserFromClient } from "@/lib/supabaseSession";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { redirect } from "next/navigation";
@@ -63,13 +64,7 @@ function buildSyntheticProfile(user: User): Profile {
 
 const getSessionUserImpl = cache(async () => {
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getUser();
-
-  if (error || !data.user) {
-    return null;
-  }
-
-  return data.user;
+  return getSessionUserFromClient(supabase);
 });
 
 export const getSessionUser = getSessionUserImpl;

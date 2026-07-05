@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Calendar, LayoutDashboard, Sparkles, Tags } from "lucide-react";
 import { QuickLogNavButton } from "@/components/QuickLogFAB";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
@@ -33,7 +32,7 @@ function NavTabLink({ href, isActive, label, icon: Icon }: NavTabLinkProps) {
   return (
     <Link
       href={href}
-      prefetch
+      prefetch={false}
       data-app-nav="manual"
       onClick={(event) => {
         event.preventDefault();
@@ -53,21 +52,12 @@ function NavTabLink({ href, isActive, label, icon: Icon }: NavTabLinkProps) {
 }
 
 export default function AppBottomNav() {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeTab = getActiveTabFromPathname(pathname);
   const currentMonthKey = resolveMonthKey(searchParams.get("month") ?? undefined);
   const leadingTabs = APP_TABS.slice(0, 2);
   const trailingTabs = APP_TABS.slice(2);
-
-  useEffect(() => {
-    router.prefetch("/settings");
-
-    for (const tab of APP_TABS) {
-      router.prefetch(buildMonthUrl(tab.href, currentMonthKey));
-    }
-  }, [currentMonthKey, router]);
 
   return (
     <nav

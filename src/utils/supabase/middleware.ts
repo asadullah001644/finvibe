@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { getSessionUserFromClient } from "@/lib/supabaseSession";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_ROUTES = new Set([
@@ -41,9 +42,7 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUserFromClient(supabase);
 
   const pathname = request.nextUrl.pathname;
 
