@@ -25,7 +25,7 @@ export type ShellGateState =
 export async function getAuthenticatedShellData(
   searchParams: Promise<MonthSearchParams>,
 ): Promise<ShellGateState> {
-  const user = await getSessionUser();
+  const [user, params] = await Promise.all([getSessionUser(), searchParams]);
 
   if (!user) {
     redirect("/login");
@@ -46,7 +46,6 @@ export async function getAuthenticatedShellData(
     }
   }
 
-  const params = await searchParams;
   const monthKey = resolveMonthKey(params.month);
   const data = await loadMonthShellData(monthKey);
 

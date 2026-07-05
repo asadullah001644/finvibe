@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
+import { getSessionUser } from "@/lib/auth";
 import type {
   Budget,
   BudgetCategory,
@@ -6,10 +7,27 @@ import type {
   SerializedExpense,
 } from "@/lib/types";
 import { DEFAULT_CATEGORIES, mergeWithDefaultCategories } from "@/lib/constants";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 
-function revalidateAppData() {
+function userDataTag(userId: string): string {
+  return `user-data-${userId}`;
+}
+
+function budgetTag(userId: string, monthKey: string): string {
+  return `budget-${userId}-${monthKey}`;
+}
+
+function expensesTag(userId: string, monthKey: string): string {
+  return `expenses-${userId}-${monthKey}`;
+}
+
+async function revalidateAppData(): Promise<void> {
   revalidatePath("/", "layout");
+
+  const user = await getSessionUser();
+  if (user) {
+    revalidateTag(userDataTag(user.id), "max");
+  }
 }
 
 interface BudgetRow {
@@ -166,7 +184,7 @@ function mapExpenseRow(row: ExpenseRow): SerializedExpense {
   };
 }
 
-export async function getBudget(monthKey: string): Promise<Budget | null> {
+async function fetchBudget(monthKey: string): Promise<Budget | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -181,6 +199,23 @@ export async function getBudget(monthKey: string): Promise<Budget | null> {
   }
 
   return data ? mapBudgetRow(data as BudgetRow, monthKey) : null;
+}
+
+export async function getBudget(monthKey: string): Promise<Budget | null> {
+  const user = await getSessionUser();
+
+  if (!user) {
+    return fetchBudget(monthKey);
+  }
+
+  return unstable_cache(
+    () => fetchBudget(monthKey),
+    ["budget", user.id, monthKey],
+    {
+      revalidate: 30,
+      tags: [budgetTag(user.id, monthKey), userDataTag(user.id)],
+    },
+  )();
 }
 
 export async function getMostRecentPriorBudget(
@@ -333,7 +368,7 @@ async function patchBudgetRow(
     }
   }
 
-  revalidateAppData();
+  await revalidateAppData();
 }
 
 export async function updateBudgetIncome(
@@ -386,7 +421,7 @@ export async function addExpense(
     throw new Error(error.message);
   }
 
-  revalidateAppData();
+  await revalidateAppData();
   return data;
 }
 
@@ -413,7 +448,7 @@ export async function updateExpense(
     throw new Error("Expense not found.");
   }
 
-  revalidateAppData();
+  await revalidateAppData();
   return data;
 }
 
@@ -434,7 +469,7 @@ export async function deleteExpense(id: string) {
     throw new Error("Expense not found.");
   }
 
-  revalidateAppData();
+  await revalidateAppData();
 }
 
 export async function getExpenses(): Promise<SerializedExpense[]> {
@@ -454,9 +489,7 @@ export async function getExpenses(): Promise<SerializedExpense[]> {
   return (data as ExpenseRow[]).map(mapExpenseRow);
 }
 
-export async function getExpensesForMonth(
-  monthKey: string,
-): Promise<SerializedExpense[]> {
+async function fetchExpensesForMonth(monthKey: string): Promise<SerializedExpense[]> {
   const range = getMonthDateRange(monthKey);
 
   if (!range) {
@@ -479,6 +512,25 @@ export async function getExpensesForMonth(
   }
 
   return (data as ExpenseRow[]).map(mapExpenseRow);
+}
+
+export async function getExpensesForMonth(
+  monthKey: string,
+): Promise<SerializedExpense[]> {
+  const user = await getSessionUser();
+
+  if (!user) {
+    return fetchExpensesForMonth(monthKey);
+  }
+
+  return unstable_cache(
+    () => fetchExpensesForMonth(monthKey),
+    ["expenses", user.id, monthKey],
+    {
+      revalidate: 30,
+      tags: [expensesTag(user.id, monthKey), userDataTag(user.id)],
+    },
+  )();
 }
 
 export async function getRecurringExpenses(): Promise<RecurringExpense[]> {
@@ -540,7 +592,7 @@ export async function saveRecurringExpense(
       throw new Error(error.message);
     }
 
-    revalidateAppData();
+    await revalidateAppData();
     return mapRecurringExpenseRow(data as RecurringExpenseRow);
   }
 
@@ -560,7 +612,7 @@ export async function saveRecurringExpense(
     throw new Error(error.message);
   }
 
-  revalidateAppData();
+  await revalidateAppData();
   return mapRecurringExpenseRow(data as RecurringExpenseRow);
 }
 
@@ -587,7 +639,7 @@ export async function deleteRecurringExpense(id: string): Promise<void> {
     throw new Error("Recurring expense not found.");
   }
 
-  revalidateAppData();
+  await revalidateAppData();
 }
 
 export async function seedRecurringExpensesForMonth(
@@ -681,5 +733,5 @@ export async function seedRecurringExpensesForMonth(
     throw new Error(error.message);
   }
 
-  revalidateAppData();
+  await revalidateAppData();
 }

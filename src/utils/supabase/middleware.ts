@@ -76,26 +76,20 @@ export async function updateSession(request: NextRequest) {
       url.searchParams.set("disabled", "1");
       return NextResponse.redirect(url);
     }
-  }
 
-  if (user && isAdminRoute(pathname)) {
-    const adminEmail = process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase();
-    const emailIsSuperAdmin =
-      adminEmail && user.email?.trim().toLowerCase() === adminEmail;
+    if (isAdminRoute(pathname)) {
+      const adminEmail = process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase();
+      const emailIsSuperAdmin =
+        adminEmail && user.email?.trim().toLowerCase() === adminEmail;
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role, is_disabled")
-      .eq("id", user.id)
-      .maybeSingle();
+      const roleIsSuperAdmin =
+        !profileError && profile?.role === "super_admin" && !profile.is_disabled;
 
-    const roleIsSuperAdmin =
-      !profileError && profile?.role === "super_admin" && !profile.is_disabled;
-
-    if (!emailIsSuperAdmin && !roleIsSuperAdmin) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/";
-      return NextResponse.redirect(url);
+      if (!emailIsSuperAdmin && !roleIsSuperAdmin) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/";
+        return NextResponse.redirect(url);
+      }
     }
   }
 

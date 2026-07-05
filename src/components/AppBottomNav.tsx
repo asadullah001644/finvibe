@@ -34,6 +34,7 @@ function NavTabLink({ href, isActive, label, icon: Icon }: NavTabLinkProps) {
     <Link
       href={href}
       prefetch
+      data-app-nav="manual"
       onClick={(event) => {
         event.preventDefault();
         navigate(href);
@@ -61,6 +62,8 @@ export default function AppBottomNav() {
   const trailingTabs = APP_TABS.slice(2);
 
   useEffect(() => {
+    router.prefetch("/settings");
+
     for (const tab of APP_TABS) {
       router.prefetch(buildMonthUrl(tab.href, currentMonthKey));
     }

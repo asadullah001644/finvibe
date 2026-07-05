@@ -217,6 +217,7 @@ export function MonthDataSync({
   children,
 }: MonthDataSyncProps) {
   const control = useContext(AppShellControlContext);
+  const { markContentReady } = useAppNavigation();
 
   const categoriesKey = budget.categories
     .map((category) => `${category.name}:${category.allocated}`)
@@ -231,6 +232,7 @@ export function MonthDataSync({
       budget,
       pinLockEnabled,
     });
+    markContentReady();
   }, [
     control,
     activeTab,
@@ -242,6 +244,7 @@ export function MonthDataSync({
     budget.monthKey,
     categoriesKey,
     pinLockEnabled,
+    markContentReady,
   ]);
 
   return children;

@@ -119,6 +119,53 @@ export default function NavigationLoadingProvider({
     [locationKey, router],
   );
 
+  useEffect(() => {
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const anchor = target.closest("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement)) {
+        return;
+      }
+
+      if (anchor.dataset.appNav === "manual") {
+        return;
+      }
+
+      if (anchor.target === "_blank" || anchor.hasAttribute("download")) {
+        return;
+      }
+
+      const href = anchor.getAttribute("href");
+      if (!href || !href.startsWith("/") || href.startsWith("//")) {
+        return;
+      }
+
+      const url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin) {
+        return;
+      }
+
+      const nextHref = buildLocationKey(url.pathname, url.searchParams);
+      if (nextHref === locationKey) {
+        return;
+      }
+
+      event.preventDefault();
+      navigate(nextHref);
+    };
+
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => document.removeEventListener("click", handleDocumentClick, true);
+  }, [locationKey, navigate]);
+
   const showRouteOverlay = isNavigating || isRoutePending;
 
   return (

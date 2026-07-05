@@ -36,6 +36,83 @@ function AdminSelectChevron() {
   );
 }
 
+function formatRole(role: AdminUserRow["role"]): string {
+  return role === "super_admin" ? "Super admin" : "User";
+}
+
+function UserStatusBadge({ isDisabled }: { isDisabled: boolean }) {
+  return isDisabled ? (
+    <span className="inline-flex rounded-full border border-[#EF4444]/30 bg-[#EF4444]/10 px-2.5 py-0.5 text-xs font-medium text-[#EF4444]">
+      Disabled
+    </span>
+  ) : (
+    <span className="inline-flex rounded-full border border-[#10B981]/30 bg-[#10B981]/10 px-2.5 py-0.5 text-xs font-medium text-[#10B981]">
+      Active
+    </span>
+  );
+}
+
+interface UserActionsProps {
+  user: AdminUserRow;
+  schemaReady: boolean;
+  pending: boolean;
+  onRunAction: (
+    action: () => Promise<{ success: boolean; error?: string }>,
+    successMessage: string,
+  ) => void;
+}
+
+function UserActions({ user, schemaReady, pending, onRunAction }: UserActionsProps) {
+  return (
+    <div className="flex flex-wrap gap-2 md:flex-nowrap">
+      <Link
+        href={`/admin/users/${user.id}`}
+        className="inline-flex min-h-9 flex-1 items-center justify-center rounded-lg border border-[#27272A] px-3 py-2 text-xs font-medium hover:border-[#8B5CF6]/40 md:min-h-0 md:flex-none md:px-2 md:py-1"
+      >
+        View data
+      </Link>
+      {schemaReady &&
+        (user.isDisabled ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => onRunAction(() => enableUserAction(user.id), "User enabled.")}
+            className="inline-flex min-h-9 flex-1 items-center justify-center rounded-lg border border-[#10B981]/30 px-3 py-2 text-xs font-medium text-[#10B981] md:min-h-0 md:flex-none md:px-2 md:py-1"
+          >
+            Enable
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => onRunAction(() => disableUserAction(user.id), "User disabled.")}
+            className="inline-flex min-h-9 flex-1 items-center justify-center rounded-lg border border-[#F59E0B]/30 px-3 py-2 text-xs font-medium text-[#F59E0B] md:min-h-0 md:flex-none md:px-2 md:py-1"
+          >
+            Disable
+          </button>
+        ))}
+      {schemaReady && (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            if (
+              window.confirm(
+                `Delete ${user.email}? This removes all their financial data.`,
+              )
+            ) {
+              onRunAction(() => deleteUserAction(user.id), "User deleted.");
+            }
+          }}
+          className="inline-flex min-h-9 w-full items-center justify-center rounded-lg border border-[#EF4444]/30 px-3 py-2 text-xs font-medium text-[#EF4444] md:min-h-0 md:w-auto md:px-2 md:py-1"
+        >
+          Delete
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboard({
   initialUsers,
   schemaReady,
@@ -77,24 +154,24 @@ export default function AdminDashboard({
   }
 
   return (
-    <main className="min-h-screen bg-[#09090B] px-4 py-8 text-zinc-100">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
+    <main className="min-h-screen bg-[#09090B] px-3 py-6 pb-10 text-zinc-100 sm:px-4 sm:py-8">
+      <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.3em] text-[#8B5CF6]/80">Super Admin</p>
-            <h1 className="mt-2 text-2xl font-semibold">User Management</h1>
+            <h1 className="mt-2 text-xl font-semibold sm:text-2xl">User Management</h1>
           </div>
           <Link
             href="/"
-            className="rounded-xl border border-[#27272A] px-4 py-2 text-sm text-zinc-300 hover:border-[#8B5CF6]/40"
+            className="inline-flex w-full items-center justify-center rounded-xl border border-[#27272A] px-4 py-2.5 text-sm text-zinc-300 hover:border-[#8B5CF6]/40 sm:w-auto"
           >
             Back to app
           </Link>
         </div>
 
         <section className="rounded-2xl border border-[#27272A] bg-[#18181B] p-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
-            <label className="block min-w-0 flex-1 lg:min-w-[220px]">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-[minmax(0,1fr)_9.5rem_9.5rem_auto] md:items-end">
+            <label className="block min-w-0 sm:col-span-2 md:col-span-1">
               <span className="mb-1 block text-xs uppercase tracking-wider text-zinc-400">
                 Search email
               </span>
@@ -105,7 +182,7 @@ export default function AdminDashboard({
                 className="h-10 w-full rounded-xl border border-[#27272A] bg-[#09090B] px-3 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-colors focus:border-[#8B5CF6]/40"
               />
             </label>
-            <label className="block w-full sm:w-auto sm:min-w-[160px]">
+            <label className="block min-w-0">
               <span className="mb-1 block text-xs uppercase tracking-wider text-zinc-400">
                 Role
               </span>
@@ -122,7 +199,7 @@ export default function AdminDashboard({
                 <AdminSelectChevron />
               </div>
             </label>
-            <label className="block w-full sm:w-auto sm:min-w-[160px]">
+            <label className="block min-w-0">
               <span className="mb-1 block text-xs uppercase tracking-wider text-zinc-400">
                 Status
               </span>
@@ -143,7 +220,7 @@ export default function AdminDashboard({
               type="button"
               disabled={pending}
               onClick={refreshUsers}
-              className="h-10 w-full shrink-0 rounded-xl bg-[#8B5CF6] px-4 text-sm font-medium disabled:opacity-60 sm:w-auto lg:min-w-[132px]"
+              className="h-10 w-full shrink-0 rounded-xl bg-[#8B5CF6] px-4 text-sm font-medium disabled:opacity-60 sm:col-span-2 md:col-span-1 md:w-auto md:justify-self-start md:px-5"
             >
               Apply filters
             </button>
@@ -170,98 +247,78 @@ export default function AdminDashboard({
           <div className="border-b border-[#27272A] px-4 py-3 text-sm text-zinc-400">
             {filteredCount} user(s)
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-[#27272A] text-zinc-400">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Email</th>
-                  <th className="px-4 py-3 font-medium">Role</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Joined</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+
+          {users.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-zinc-500">No users match these filters.</p>
+          ) : (
+            <>
+              <div className="space-y-3 p-4 md:hidden">
                 {users.map((user) => (
-                  <tr key={user.id} className="border-b border-[#27272A]/70">
-                    <td className="px-4 py-3">{user.email}</td>
-                    <td className="px-4 py-3">{user.role}</td>
-                    <td className="px-4 py-3">
-                      {user.isDisabled ? (
-                        <span className="text-[#EF4444]">Disabled</span>
-                      ) : (
-                        <span className="text-[#10B981]">Active</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <Link
-                          href={`/admin/users/${user.id}`}
-                          className="rounded-lg border border-[#27272A] px-2 py-1 text-xs hover:border-[#8B5CF6]/40"
-                        >
-                          View data
-                        </Link>
-                        {schemaReady &&
-                          (user.isDisabled ? (
-                            <button
-                              type="button"
-                              disabled={pending}
-                              onClick={() =>
-                                runAction(
-                                  () => enableUserAction(user.id),
-                                  "User enabled.",
-                                )
-                              }
-                              className="rounded-lg border border-[#10B981]/30 px-2 py-1 text-xs text-[#10B981]"
-                            >
-                              Enable
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled={pending}
-                              onClick={() =>
-                                runAction(
-                                  () => disableUserAction(user.id),
-                                  "User disabled.",
-                                )
-                              }
-                              className="rounded-lg border border-[#F59E0B]/30 px-2 py-1 text-xs text-[#F59E0B]"
-                            >
-                              Disable
-                            </button>
-                          ))}
-                        {schemaReady && (
-                          <button
-                            type="button"
-                            disabled={pending}
-                            onClick={() => {
-                              if (
-                                window.confirm(
-                                  `Delete ${user.email}? This removes all their financial data.`,
-                                )
-                              ) {
-                                runAction(
-                                  () => deleteUserAction(user.id),
-                                  "User deleted.",
-                                );
-                              }
-                            }}
-                            className="rounded-lg border border-[#EF4444]/30 px-2 py-1 text-xs text-[#EF4444]"
-                          >
-                            Delete
-                          </button>
-                        )}
+                  <article
+                    key={user.id}
+                    className="rounded-xl border border-[#27272A] bg-[#09090B] p-4"
+                  >
+                    <div className="space-y-3">
+                      <div className="min-w-0">
+                        <p className="break-all text-sm font-medium text-zinc-100">{user.email}</p>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          Joined {new Date(user.createdAt).toLocaleDateString()}
+                        </p>
                       </div>
-                    </td>
-                  </tr>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex rounded-full border border-[#27272A] bg-[#18181B] px-2.5 py-0.5 text-xs text-zinc-300">
+                          {formatRole(user.role)}
+                        </span>
+                        <UserStatusBadge isDisabled={user.isDisabled} />
+                      </div>
+                      <UserActions
+                        user={user}
+                        schemaReady={schemaReady}
+                        pending={pending}
+                        onRunAction={runAction}
+                      />
+                    </div>
+                  </article>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="border-b border-[#27272A] text-zinc-400">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Email</th>
+                      <th className="px-4 py-3 font-medium">Role</th>
+                      <th className="px-4 py-3 font-medium">Status</th>
+                      <th className="px-4 py-3 font-medium">Joined</th>
+                      <th className="px-4 py-3 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr key={user.id} className="border-b border-[#27272A]/70">
+                        <td className="max-w-xs truncate px-4 py-3">{user.email}</td>
+                        <td className="px-4 py-3">{formatRole(user.role)}</td>
+                        <td className="px-4 py-3">
+                          <UserStatusBadge isDisabled={user.isDisabled} />
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          {new Date(user.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <UserActions
+                            user={user}
+                            schemaReady={schemaReady}
+                            pending={pending}
+                            onRunAction={runAction}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </section>
       </div>
     </main>

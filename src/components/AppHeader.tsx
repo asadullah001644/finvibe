@@ -110,6 +110,7 @@ export default function AppHeader({
           />
           <Link
             href="/settings"
+            prefetch
             className="inline-flex items-center justify-center rounded-xl border border-cardBorder bg-card p-2 text-zinc-300 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
             aria-label="Settings"
           >

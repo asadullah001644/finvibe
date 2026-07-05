@@ -1,6 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import type { Profile, UserRole } from "@/lib/types";
 import { isProfilesTableMissing } from "@/lib/schema";
+import { unstable_cache } from "next/cache";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
@@ -59,7 +61,7 @@ function buildSyntheticProfile(user: User): Profile {
   };
 }
 
-export async function getSessionUser() {
+const getSessionUserImpl = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
 
@@ -68,22 +70,19 @@ export async function getSessionUser() {
   }
 
   return data.user;
-}
+});
 
-export async function getProfile(userId?: string): Promise<Profile | null> {
+export const getSessionUser = getSessionUserImpl;
+
+const getProfileImpl = cache(async (userId: string): Promise<Profile | null> => {
   const supabase = await createClient();
-  const id = userId ?? (await getSessionUser())?.id;
-
-  if (!id) {
-    return null;
-  }
 
   const { data, error } = await supabase
     .from("profiles")
     .select(
       "id, email, role, is_disabled, app_pin_hash, currency, created_at, updated_at",
     )
-    .eq("id", id)
+    .eq("id", userId)
     .maybeSingle();
 
   if (error) {
@@ -94,11 +93,21 @@ export async function getProfile(userId?: string): Promise<Profile | null> {
   }
 
   return data ? mapProfile(data as ProfileRow) : null;
+});
+
+export async function getProfile(userId?: string): Promise<Profile | null> {
+  const id = userId ?? (await getSessionUser())?.id;
+
+  if (!id) {
+    return null;
+  }
+
+  return getProfileImpl(id);
 }
 
 /** Profile from DB, or a safe in-memory default when migrations are not applied yet. Never has a PIN unless stored in DB. */
-export async function getProfileOrDefault(user: User): Promise<Profile> {
-  const existing = await getProfile(user.id);
+export const getProfileOrDefault = cache(async (user: User): Promise<Profile> => {
+  const existing = await getProfileImpl(user.id);
   if (existing) {
     return existing;
   }
@@ -129,12 +138,20 @@ export async function getProfileOrDefault(user: User): Promise<Profile> {
   }
 
   return mapProfile(data as ProfileRow);
-}
+});
+
+const getProfilesTableReadyCached = unstable_cache(
+  async () => {
+    const supabase = await createClient();
+    const { error } = await supabase.from("profiles").select("id").limit(1);
+    return !isProfilesTableMissing(error);
+  },
+  ["profiles-table-ready"],
+  { revalidate: 3600 },
+);
 
 export async function isProfilesTableReady(): Promise<boolean> {
-  const supabase = await createClient();
-  const { error } = await supabase.from("profiles").select("id").limit(1);
-  return !isProfilesTableMissing(error);
+  return getProfilesTableReadyCached();
 }
 
 export function isSuperAdminUser(
@@ -147,10 +164,10 @@ export function isSuperAdminUser(
   return isSuperAdminEmail(user.email ?? "");
 }
 
-export async function requireAuth(): Promise<{
+export const requireAuth = cache(async (): Promise<{
   user: NonNullable<Awaited<ReturnType<typeof getSessionUser>>>;
   profile: Profile;
-}> {
+}> => {
   const user = await getSessionUser();
 
   if (!user) {
@@ -164,12 +181,12 @@ export async function requireAuth(): Promise<{
   }
 
   return { user, profile };
-}
+});
 
-export async function requireSuperAdmin(): Promise<{
+export const requireSuperAdmin = cache(async (): Promise<{
   user: NonNullable<Awaited<ReturnType<typeof getSessionUser>>>;
   profile: Profile;
-}> {
+}> => {
   const auth = await requireAuth();
 
   if (!isSuperAdmin(auth.profile) && !isSuperAdminEmail(auth.user.email ?? "")) {
@@ -177,7 +194,7 @@ export async function requireSuperAdmin(): Promise<{
   }
 
   return auth;
-}
+});
 
 export async function ensureSuperAdminRole(userId: string, email: string): Promise<void> {
   if (!isSuperAdminEmail(email)) {
