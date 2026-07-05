@@ -8,6 +8,10 @@ import type {
 import { DEFAULT_CATEGORIES, mergeWithDefaultCategories } from "@/lib/constants";
 import { revalidatePath } from "next/cache";
 
+function revalidateAppData() {
+  revalidatePath("/", "layout");
+}
+
 interface BudgetRow {
   id?: string;
   month_key: string;
@@ -128,6 +132,10 @@ function getMonthDateRange(monthKey: string): { start: string; end: string } | n
   };
 }
 
+const BUDGET_COLUMNS = "month_key, total_salary, savings_goal, categories";
+const EXPENSE_COLUMNS = "id, amount, category, description, date";
+const RECURRING_SEED_COLUMNS = "id, amount, category, description";
+
 function mapBudgetRow(row: BudgetRow | null, monthKey: string): Budget {
   if (!row) {
     return {
@@ -161,7 +169,7 @@ export async function getBudget(monthKey: string): Promise<Budget | null> {
 
   const { data, error } = await supabase
     .from("budgets")
-    .select("*")
+    .select(BUDGET_COLUMNS)
     .eq("month_key", monthKey)
     .maybeSingle();
 
@@ -180,7 +188,7 @@ export async function getMostRecentPriorBudget(
 
   const { data, error } = await supabase
     .from("budgets")
-    .select("*")
+    .select(BUDGET_COLUMNS)
     .lt("month_key", monthKey)
     .order("month_key", { ascending: false })
     .limit(1)
@@ -207,7 +215,7 @@ async function createEmptyBudget(monthKey: string): Promise<Budget> {
       savings_goal: 0,
       categories: DEFAULT_CATEGORIES,
     })
-    .select("*")
+    .select(BUDGET_COLUMNS)
     .single();
 
   if (error) {
@@ -253,10 +261,13 @@ export async function ensureMonthBudget(
       },
     );
 
-    const budget = await getBudget(monthKey);
-
     return {
-      budget: budget ?? prior,
+      budget: {
+        monthKey,
+        totalSalary: prior.totalSalary,
+        savingsGoal: prior.savingsGoal,
+        categories: carriedCategories,
+      },
       carriedFromMonthKey: prior.monthKey,
     };
   }
@@ -320,7 +331,7 @@ async function patchBudgetRow(
     }
   }
 
-  revalidatePath("/");
+  revalidateAppData();
 }
 
 export async function updateBudgetIncome(
@@ -373,7 +384,7 @@ export async function addExpense(
     throw new Error(error.message);
   }
 
-  revalidatePath("/");
+  revalidateAppData();
   return data;
 }
 
@@ -400,7 +411,7 @@ export async function updateExpense(
     throw new Error("Expense not found.");
   }
 
-  revalidatePath("/");
+  revalidateAppData();
   return data;
 }
 
@@ -421,7 +432,7 @@ export async function deleteExpense(id: string) {
     throw new Error("Expense not found.");
   }
 
-  revalidatePath("/");
+  revalidateAppData();
 }
 
 export async function getExpenses(): Promise<SerializedExpense[]> {
@@ -453,7 +464,7 @@ export async function getExpensesForMonth(
 
   const { data, error } = await supabase
     .from("expenses")
-    .select("*")
+    .select(EXPENSE_COLUMNS)
     .gte("date", range.start)
     .lte("date", range.end)
     .order("date", { ascending: false });
@@ -525,7 +536,7 @@ export async function saveRecurringExpense(
       throw new Error(error.message);
     }
 
-    revalidatePath("/");
+    revalidateAppData();
     return mapRecurringExpenseRow(data as RecurringExpenseRow);
   }
 
@@ -545,7 +556,7 @@ export async function saveRecurringExpense(
     throw new Error(error.message);
   }
 
-  revalidatePath("/");
+  revalidateAppData();
   return mapRecurringExpenseRow(data as RecurringExpenseRow);
 }
 
@@ -572,7 +583,7 @@ export async function deleteRecurringExpense(id: string): Promise<void> {
     throw new Error("Recurring expense not found.");
   }
 
-  revalidatePath("/");
+  revalidateAppData();
 }
 
 export async function seedRecurringExpensesForMonth(
@@ -586,10 +597,27 @@ export async function seedRecurringExpensesForMonth(
 
   const supabase = await createClient();
 
+  const { count: activeRecurringCount, error: countError } = await supabase
+    .from("recurring_expenses")
+    .select("id", { count: "exact", head: true })
+    .eq("is_active", true);
+
+  if (countError) {
+    if (isRecurringSchemaUnavailableError(countError)) {
+      return;
+    }
+
+    throw new Error(countError.message);
+  }
+
+  if (!activeRecurringCount) {
+    return;
+  }
+
   const [recurringResult, seededResult] = await Promise.all([
     supabase
       .from("recurring_expenses")
-      .select("*")
+      .select(RECURRING_SEED_COLUMNS)
       .eq("is_active", true),
     supabase
       .from("expenses")
@@ -649,5 +677,5 @@ export async function seedRecurringExpensesForMonth(
     throw new Error(error.message);
   }
 
-  revalidatePath("/");
+  revalidateAppData();
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useAppShellActions } from "@/components/AppShell";
+import { useAppShellActions } from "@/components/AppShellProvider";
 
 interface CarryForwardNoticeProps {
   carriedFromMonthLabel: string;

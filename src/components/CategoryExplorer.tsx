@@ -10,6 +10,7 @@ import {
   deleteExpenseAction,
   updateExpenseAction,
 } from "@/lib/actions";
+import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import {
   CATEGORY_SEPARATOR,
   getCategoryGroups,
@@ -449,6 +450,7 @@ export default function CategoryExplorer({
 }: CategoryExplorerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { navigate } = useAppNavigation();
 
   const activeGroup = (searchParams.get("group") as CategoryFilterGroup) || "all";
   const activeCategories = searchParams.getAll("category");
@@ -479,7 +481,7 @@ export default function CategoryExplorer({
     monthlyTotal > 0 ? Math.round((totalSpent / monthlyTotal) * 100) : 0;
 
   const updateFilters = (group: CategoryFilterGroup, categories: string[]) => {
-    router.push(
+    navigate(
       buildCategoriesUrl(monthKey, {
         group: group === "all" ? undefined : group,
         categories: categories.length > 0 ? categories : undefined,

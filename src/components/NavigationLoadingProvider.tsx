@@ -15,6 +15,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 interface NavigationContextValue {
   navigate: (href: string) => void;
   isNavigating: boolean;
+  setDeferredLoading: (loading: boolean) => void;
 }
 
 const NavigationContext = createContext<NavigationContextValue | null>(null);
@@ -42,7 +43,14 @@ export default function NavigationLoadingProvider({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [isNavigating, setIsNavigating] = useState(false);
+  const [deferredLoadingCount, setDeferredLoadingCount] = useState(0);
   const targetHrefRef = useRef<string | null>(null);
+
+  const setDeferredLoading = useCallback((loading: boolean) => {
+    setDeferredLoadingCount((count) =>
+      loading ? count + 1 : Math.max(0, count - 1),
+    );
+  }, []);
 
   const locationKey = buildLocationKey(pathname, searchParams);
 
@@ -80,10 +88,13 @@ export default function NavigationLoadingProvider({
     [locationKey, router],
   );
 
-  const showOverlay = isNavigating || isPending;
+  const showOverlay =
+    isNavigating || isPending || deferredLoadingCount > 0;
 
   return (
-    <NavigationContext.Provider value={{ navigate, isNavigating: showOverlay }}>
+    <NavigationContext.Provider
+      value={{ navigate, isNavigating: showOverlay, setDeferredLoading }}
+    >
       {children}
     </NavigationContext.Provider>
   );

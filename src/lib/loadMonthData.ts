@@ -1,11 +1,12 @@
+import { cache } from "react";
 import { format } from "date-fns";
+import {
+  ensureMonthBudget,
+  getExpensesForMonth,
+  seedRecurringExpensesForMonth,
+} from "@/actions/dbActions";
 import { DEFAULT_CATEGORIES } from "@/lib/constants";
 import { formatMonthLabel, monthKeyToDate } from "@/lib/month";
-import {
-  ensureMonthBudgetAction,
-  getCurrentMonthExpensesAction,
-  seedRecurringExpensesForMonthAction,
-} from "@/lib/actions";
 import type { BudgetCategory } from "@/lib/types";
 
 export interface MonthBudget {
@@ -23,35 +24,27 @@ export interface MonthExpense {
   date: Date;
 }
 
-export interface MonthData {
+export interface MonthShellData {
   monthKey: string;
   monthLabel: string;
   budget: MonthBudget;
-  expenses: MonthExpense[];
   carriedFromMonthLabel?: string;
 }
 
-export async function loadMonthData(monthKey: string): Promise<MonthData> {
-  const monthLabel = format(monthKeyToDate(monthKey), "MMMM yyyy");
+export interface MonthData extends MonthShellData {
+  expenses: MonthExpense[];
+}
 
-  let budget: MonthBudget = {
-    monthKey,
-    totalSalary: 0,
-    savingsGoal: 0,
-    categories: DEFAULT_CATEGORIES,
-  };
-  let expenses: MonthExpense[] = [];
-  let carriedFromMonthLabel: string | undefined;
+const seedRecurringForMonthCached = cache(seedRecurringExpensesForMonth);
+
+async function loadMonthShellDataImpl(monthKey: string): Promise<MonthShellData> {
+  const monthLabel = format(monthKeyToDate(monthKey), "MMMM yyyy");
 
   try {
     const { budget: loadedBudget, carriedFromMonthKey } =
-      await ensureMonthBudgetAction(monthKey);
+      await ensureMonthBudget(monthKey);
 
-    await seedRecurringExpensesForMonthAction(monthKey);
-
-    const loadedExpenses = await getCurrentMonthExpensesAction(monthKey);
-
-    budget = {
+    const budget: MonthBudget = {
       monthKey: loadedBudget.monthKey ?? monthKey,
       totalSalary: loadedBudget.totalSalary ?? 0,
       savingsGoal: loadedBudget.savingsGoal ?? 0,
@@ -61,20 +54,47 @@ export async function loadMonthData(monthKey: string): Promise<MonthData> {
           ? loadedBudget.categories
           : DEFAULT_CATEGORIES,
     };
-    expenses = Array.isArray(loadedExpenses) ? loadedExpenses : [];
 
-    if (carriedFromMonthKey) {
-      carriedFromMonthLabel = formatMonthLabel(carriedFromMonthKey);
-    }
-  } catch {
-    budget = {
+    return {
       monthKey,
-      totalSalary: 0,
-      savingsGoal: 0,
-      categories: DEFAULT_CATEGORIES,
+      monthLabel,
+      budget,
+      carriedFromMonthLabel: carriedFromMonthKey
+        ? formatMonthLabel(carriedFromMonthKey)
+        : undefined,
     };
-    expenses = [];
+  } catch {
+    return {
+      monthKey,
+      monthLabel,
+      budget: {
+        monthKey,
+        totalSalary: 0,
+        savingsGoal: 0,
+        categories: DEFAULT_CATEGORIES,
+      },
+    };
   }
-
-  return { monthKey, monthLabel, budget, expenses, carriedFromMonthLabel };
 }
+
+async function loadMonthExpensesImpl(monthKey: string): Promise<MonthExpense[]> {
+  try {
+    await seedRecurringForMonthCached(monthKey);
+
+    const loadedExpenses = await getExpensesForMonth(monthKey);
+    return Array.isArray(loadedExpenses) ? loadedExpenses : [];
+  } catch {
+    return [];
+  }
+}
+
+async function loadMonthDataImpl(monthKey: string): Promise<MonthData> {
+  const shell = await loadMonthShellDataImpl(monthKey);
+  const expenses = await loadMonthExpensesImpl(monthKey);
+
+  return { ...shell, expenses };
+}
+
+export const loadMonthShellData = cache(loadMonthShellDataImpl);
+export const loadMonthExpenses = cache(loadMonthExpensesImpl);
+export const loadMonthData = cache(loadMonthDataImpl);

@@ -3,7 +3,7 @@
 import CategorySummary from "@/components/CategorySummary";
 import SetupHero from "@/components/SetupHero";
 import SummaryStrip from "@/components/SummaryStrip";
-import { useAppShellActions } from "@/components/AppShell";
+import { useAppShellActions } from "@/components/AppShellProvider";
 import type { BudgetCategory } from "@/lib/types";
 
 interface OverviewContentProps {

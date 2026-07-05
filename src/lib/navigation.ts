@@ -53,3 +53,19 @@ export function buildCategoriesUrl(
     category: categories,
   });
 }
+
+export function getActiveTabFromPathname(pathname: string): AppTab {
+  if (pathname.startsWith("/categories")) {
+    return "categories";
+  }
+
+  if (pathname.startsWith("/calendar")) {
+    return "calendar";
+  }
+
+  if (pathname.startsWith("/insights")) {
+    return "insights";
+  }
+
+  return "overview";
+}

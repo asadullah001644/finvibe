@@ -1,15 +1,14 @@
-import { Suspense } from "react";
+import { ClearAppShell } from "@/components/AppShellProvider";
 import PinUnlock from "@/components/PinUnlock";
-import PageLoadingSpinner from "@/components/PageLoadingSpinner";
 import { resolveMonthKey } from "@/lib/month";
-import { loadMonthData } from "@/lib/loadMonthData";
+import { loadMonthShellData } from "@/lib/loadMonthData";
 import { isSessionUnlocked } from "@/lib/requireUnlocked";
 
 interface MonthSearchParams {
   month?: string;
 }
 
-export async function getAuthenticatedMonthPageData(
+export async function getAuthenticatedShellData(
   searchParams: Promise<MonthSearchParams>,
 ) {
   if (!(await isSessionUnlocked())) {
@@ -18,13 +17,9 @@ export async function getAuthenticatedMonthPageData(
 
   const params = await searchParams;
   const monthKey = resolveMonthKey(params.month);
-  const data = await loadMonthData(monthKey);
+  const data = await loadMonthShellData(monthKey);
 
   return { locked: false as const, ...data };
-}
-
-export function PageLoadingFallback() {
-  return <PageLoadingSpinner />;
 }
 
 export function AuthGate({
@@ -35,12 +30,13 @@ export function AuthGate({
   children: React.ReactNode;
 }) {
   if (locked) {
-    return <PinUnlock />;
+    return (
+      <>
+        <ClearAppShell />
+        <PinUnlock />
+      </>
+    );
   }
 
   return <>{children}</>;
-}
-
-export function ClientSuspense({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<PageLoadingFallback />}>{children}</Suspense>;
 }
