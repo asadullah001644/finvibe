@@ -8,9 +8,9 @@ import {
   dismissPwaPrompt,
   isIosDevice,
   isMobileBrowser,
-  isPwaDismissed,
-  isStandaloneDisplayMode,
+  markPwaShownThisSession,
   registerServiceWorker,
+  shouldShowPwaPrompt,
 } from "@/lib/pwa";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -20,6 +20,20 @@ interface BeforeInstallPromptEvent extends Event {
 
 type PromptMode = "native" | "ios" | "android";
 
+function openPrompt(
+  mode: PromptMode,
+  setMode: (mode: PromptMode) => void,
+  setVisible: (visible: boolean) => void,
+) {
+  if (!shouldShowPwaPrompt()) {
+    return;
+  }
+
+  markPwaShownThisSession();
+  setMode(mode);
+  setVisible(true);
+}
+
 export default function PwaInstallPrompt() {
   const [visible, setVisible] = useState(false);
   const [mode, setMode] = useState<PromptMode>("native");
@@ -27,45 +41,58 @@ export default function PwaInstallPrompt() {
     null,
   );
   const [installing, setInstalling] = useState(false);
-  const installEventRef = useRef<BeforeInstallPromptEvent | null>(null);
+  const promptInitializedRef = useRef(false);
 
   useEffect(() => {
-    if (isStandaloneDisplayMode() || isPwaDismissed()) {
+    if (promptInitializedRef.current || !shouldShowPwaPrompt()) {
       return;
     }
 
+    promptInitializedRef.current = true;
     void registerServiceWorker();
 
+    const cachedPrompt = window.__expenseDiaryInstallPrompt as
+      | BeforeInstallPromptEvent
+      | undefined;
+    if (cachedPrompt) {
+      setInstallEvent(cachedPrompt);
+      openPrompt("native", setMode, setVisible);
+      return;
+    }
+
     const showFallback = () => {
-      if (isStandaloneDisplayMode() || isPwaDismissed()) {
+      if (!shouldShowPwaPrompt()) {
         return;
       }
 
-      if (installEventRef.current) {
+      if (window.__expenseDiaryInstallPrompt) {
+        setInstallEvent(window.__expenseDiaryInstallPrompt as BeforeInstallPromptEvent);
+        openPrompt("native", setMode, setVisible);
         return;
       }
 
       if (isIosDevice()) {
-        setMode("ios");
-        setVisible(true);
+        openPrompt("ios", setMode, setVisible);
         return;
       }
 
       if (isMobileBrowser()) {
-        setMode("android");
-        setVisible(true);
+        openPrompt("android", setMode, setVisible);
       }
     };
 
-    const fallbackTimer = window.setTimeout(showFallback, isIosDevice() ? 1800 : 4500);
+    const fallbackTimer = window.setTimeout(showFallback, isIosDevice() ? 2500 : 6000);
 
     const handleBeforeInstallPrompt = (event: Event) => {
+      if (!isMobileBrowser() || !shouldShowPwaPrompt()) {
+        return;
+      }
+
       event.preventDefault();
       const promptEvent = event as BeforeInstallPromptEvent;
-      installEventRef.current = promptEvent;
+      window.__expenseDiaryInstallPrompt = promptEvent;
       setInstallEvent(promptEvent);
-      setMode("native");
-      setVisible(true);
+      openPrompt("native", setMode, setVisible);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -91,11 +118,10 @@ export default function PwaInstallPrompt() {
     try {
       await installEvent.prompt();
       const choice = await installEvent.userChoice;
+      dismissPwaPrompt();
+      setVisible(false);
       if (choice.outcome === "accepted") {
-        setVisible(false);
-      } else {
-        dismissPwaPrompt();
-        setVisible(false);
+        window.__expenseDiaryInstallPrompt = undefined;
       }
     } catch (error) {
       console.error("PWA install prompt failed:", error);

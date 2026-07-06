@@ -1,5 +1,12 @@
 export const PWA_DISMISS_KEY = "expense-diary-pwa-dismissed";
-export const PWA_DISMISS_DAYS = 14;
+export const PWA_SESSION_SHOWN_KEY = "expense-diary-pwa-shown";
+
+declare global {
+  interface Window {
+    __expenseDiarySwRegistered?: boolean;
+    __expenseDiaryInstallPrompt?: Event;
+  }
+}
 
 export function isStandaloneDisplayMode(): boolean {
   if (typeof window === "undefined") {
@@ -39,34 +46,78 @@ export function isPwaDismissed(): boolean {
       return false;
     }
 
-    const dismissedAt = Number(raw);
-    if (!Number.isFinite(dismissedAt)) {
-      return false;
+    if (raw === "1") {
+      return true;
     }
 
-    const elapsedMs = Date.now() - dismissedAt;
-    return elapsedMs < PWA_DISMISS_DAYS * 24 * 60 * 60 * 1000;
+    const dismissedAt = Number(raw);
+    if (Number.isFinite(dismissedAt)) {
+      return true;
+    }
+
+    return true;
   } catch {
+    return true;
+  }
+}
+
+export function wasPwaShownThisSession(): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  try {
+    return window.sessionStorage.getItem(PWA_SESSION_SHOWN_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+
+export function shouldShowPwaPrompt(): boolean {
+  if (!isMobileBrowser()) {
     return false;
+  }
+
+  if (isStandaloneDisplayMode() || isPwaDismissed() || wasPwaShownThisSession()) {
+    return false;
+  }
+
+  return true;
+}
+
+export function markPwaShownThisSession(): void {
+  try {
+    window.sessionStorage.setItem(PWA_SESSION_SHOWN_KEY, "1");
+  } catch {
+    // Ignore storage failures.
   }
 }
 
 export function dismissPwaPrompt(): void {
+  markPwaShownThisSession();
+
   try {
-    window.localStorage.setItem(PWA_DISMISS_KEY, String(Date.now()));
+    window.localStorage.setItem(PWA_DISMISS_KEY, "1");
   } catch {
-    // Ignore storage failures (private mode, etc.).
+    // Ignore storage failures.
   }
 }
 
 export async function registerServiceWorker(): Promise<void> {
-  if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+  if (
+    typeof window === "undefined" ||
+    !("serviceWorker" in navigator) ||
+    window.__expenseDiarySwRegistered
+  ) {
     return;
   }
+
+  window.__expenseDiarySwRegistered = true;
 
   try {
     await navigator.serviceWorker.register("/sw.js", { scope: "/" });
   } catch (error) {
+    window.__expenseDiarySwRegistered = false;
     console.error("PWA service worker registration failed:", error);
   }
 }
