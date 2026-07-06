@@ -7,6 +7,7 @@ import AuthShell, {
   AuthError,
   AuthField,
   AuthLink,
+  AuthPasswordField,
   AuthSubmitButton,
   AuthSuccess,
 } from "@/components/auth/AuthShell";
@@ -45,7 +46,12 @@ export default function SignUpPage() {
   return (
     <AuthShell
       title="Create account"
-      subtitle={`Start logging daily expenses with ${APP_NAME}`}
+      subtitle={
+        <>
+          Start logging daily expenses with{" "}
+          <span className="font-semibold text-zinc-300">{APP_NAME}</span>
+        </>
+      }
       footer={
         <>
           Already have an account? <AuthLink href="/login">Sign in</AuthLink>
@@ -64,18 +70,16 @@ export default function SignUpPage() {
           onChange={setEmail}
           autoComplete="email"
         />
-        <AuthField
+        <AuthPasswordField
           id="password"
           label="Password"
-          type="password"
           value={password}
           onChange={setPassword}
           autoComplete="new-password"
         />
-        <AuthField
+        <AuthPasswordField
           id="confirmPassword"
           label="Confirm password"
-          type="password"
           value={confirmPassword}
           onChange={setConfirmPassword}
           autoComplete="new-password"

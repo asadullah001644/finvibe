@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import NavigationLoadingProvider from "@/components/NavigationLoadingProvider";
+import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import SupabaseSessionSync from "@/components/SupabaseSessionSync";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/branding";
 import "./globals.css";
@@ -21,8 +22,15 @@ export const metadata: Metadata = {
   description: APP_DESCRIPTION,
   manifest: "/manifest.json",
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/apple-icon.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
     shortcut: [{ url: "/icon.svg", type: "image/svg+xml" }],
   },
   appleWebApp: {
@@ -50,6 +58,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <NavigationLoadingProvider>
             <SupabaseSessionSync />
+            <PwaInstallPrompt />
             {children}
           </NavigationLoadingProvider>
         </Suspense>

@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import AppLogo from "@/components/AppLogo";
 import { APP_NAME, APP_TAGLINE } from "@/lib/branding";
 
 interface AuthShellProps {
-  title: string;
-  subtitle: string;
+  title: ReactNode;
+  subtitle: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
 }
@@ -21,7 +22,7 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
         <div className="mb-8 text-center">
           <div className="mx-auto flex w-fit flex-col items-center">
             <AppLogo size="lg" />
-            <p className="mt-4 text-xs font-medium uppercase tracking-[0.28em] text-[#8B5CF6]/80">
+            <p className="mt-4 text-sm font-bold tracking-[0.06em] text-zinc-100">
               {APP_NAME}
             </p>
             <p className="mt-1 text-[11px] text-zinc-500">{APP_TAGLINE}</p>
@@ -76,6 +77,47 @@ export function AuthField({
         disabled={disabled}
         className="w-full rounded-xl border border-[#27272A] bg-[#09090B] px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-[#8B5CF6]/60 focus:ring-2 focus:ring-[#8B5CF6]/20 disabled:cursor-not-allowed disabled:opacity-50"
       />
+    </label>
+  );
+}
+
+export function AuthPasswordField({
+  id,
+  label,
+  value,
+  onChange,
+  autoComplete,
+  required = true,
+  disabled = false,
+}: Omit<AuthFieldProps, "type">) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-zinc-400">
+        {label}
+      </span>
+      <div className="relative">
+        <input
+          id={id}
+          type={visible ? "text" : "password"}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          autoComplete={autoComplete}
+          required={required}
+          disabled={disabled}
+          className="w-full rounded-xl border border-[#27272A] bg-[#09090B] py-3 pr-11 pl-4 text-sm text-zinc-100 outline-none transition focus:border-[#8B5CF6]/60 focus:ring-2 focus:ring-[#8B5CF6]/20 disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((current) => !current)}
+          disabled={disabled}
+          className="absolute inset-y-0 right-0 flex items-center px-3 text-zinc-500 transition hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label={visible ? "Hide password" : "Show password"}
+        >
+          {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
     </label>
   );
 }

@@ -11,6 +11,7 @@ import {
   validateAuthPassword,
 } from "@/lib/authErrors";
 import { clearPinSession, setPinSession, setPinTabBootstrap } from "@/lib/pinSession";
+import { getSiteOrigin } from "@/lib/siteOrigin";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
@@ -22,13 +23,6 @@ export interface AuthActionResult {
 }
 
 const LEGACY_PIN_COOKIE = "finvibe_session";
-
-function getOrigin(): string {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
-  );
-}
 
 async function clearLegacyCookies(): Promise<void> {
   const cookieStore = await cookies();
@@ -115,11 +109,12 @@ export async function signUpAction(
 
   try {
     const supabase = await createClient();
+    const siteOrigin = await getSiteOrigin();
     const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
       options: {
-        emailRedirectTo: `${getOrigin()}/auth/callback`,
+        emailRedirectTo: `${siteOrigin}/auth/callback`,
       },
     });
 
@@ -172,8 +167,9 @@ export async function forgotPasswordAction(email: string): Promise<AuthActionRes
 
   try {
     const supabase = await createClient();
+    const siteOrigin = await getSiteOrigin();
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${getOrigin()}/auth/callback?next=/reset-password`,
+      redirectTo: `${siteOrigin}/auth/callback?next=/reset-password`,
     });
 
     if (error) {

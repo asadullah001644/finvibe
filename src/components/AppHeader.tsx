@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import CategoryAllocation from "@/components/CategoryAllocation";
 import IncomeSettings from "@/components/IncomeSettings";
 import LockButton from "@/components/LockButton";
+import SignOutButton from "@/components/SignOutButton";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import RecurringExpensesSettings from "@/components/RecurringExpensesSettings";
 import { APP_TABS, buildMonthUrl, getActiveTabFromPathname } from "@/lib/navigation";
@@ -98,6 +99,7 @@ function BudgetTools({
   onMonthChange,
   onMonthFieldClick,
   compactLock = false,
+  showSignOut = true,
 }: {
   currentMonthKey: string;
   monthLabel: string;
@@ -117,6 +119,7 @@ function BudgetTools({
   onMonthChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onMonthFieldClick: (event: React.MouseEvent<HTMLLabelElement>) => void;
   compactLock?: boolean;
+  showSignOut?: boolean;
 }) {
   return (
     <>
@@ -154,6 +157,7 @@ function BudgetTools({
         />
       )}
       {pinLockEnabled && <LockButton compact={compactLock} />}
+      {showSignOut && <SignOutButton compact={compactLock} />}
     </>
   );
 }
@@ -254,6 +258,7 @@ export default function AppHeader({
             >
               <Settings className="h-4 w-4" />
             </Link>
+            <SignOutButton compact />
           </div>
         </div>
 
@@ -286,6 +291,7 @@ export default function AppHeader({
             monthInputRef={mobileMonthInputRef}
             onMonthFieldClick={openMobileMonthPicker}
             compactLock
+            showSignOut={false}
           />
         </div>
       </div>

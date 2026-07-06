@@ -14,6 +14,7 @@ import AuthShell, {
   AuthError,
   AuthField,
   AuthLink,
+  AuthPasswordField,
   AuthSubmitButton,
   AuthSuccess,
 } from "@/components/auth/AuthShell";
@@ -80,7 +81,14 @@ export default function LoginPageClient() {
 
   if (checkingSession) {
     return (
-      <AuthShell title="Welcome back" subtitle="Checking your session...">
+      <AuthShell
+        title="Sign in"
+        subtitle={
+          <>
+            Checking your <span className="font-semibold text-zinc-300">{APP_NAME}</span> session...
+          </>
+        }
+      >
         <p className="text-center text-sm text-zinc-500">Loading...</p>
       </AuthShell>
     );
@@ -88,8 +96,13 @@ export default function LoginPageClient() {
 
   return (
     <AuthShell
-      title="Welcome back"
-      subtitle={`Sign in to your ${APP_NAME} account`}
+      title="Sign in"
+      subtitle={
+        <>
+          Access your{" "}
+          <span className="font-semibold text-zinc-300">{APP_NAME}</span> account
+        </>
+      }
       footer={
         <>
           No account yet? <AuthLink href="/signup">Create one</AuthLink>
@@ -112,10 +125,9 @@ export default function LoginPageClient() {
           onChange={setEmail}
           autoComplete="email"
         />
-        <AuthField
+        <AuthPasswordField
           id="password"
           label="Password"
-          type="password"
           value={password}
           onChange={setPassword}
           autoComplete="current-password"
