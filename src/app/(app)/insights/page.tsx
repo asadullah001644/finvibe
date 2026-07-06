@@ -12,7 +12,7 @@ interface InsightsPageProps {
 }
 
 export default async function InsightsPage({ searchParams }: InsightsPageProps) {
-  const shellData = await getAuthenticatedShellData(searchParams);
+  const shellData = await getAuthenticatedShellData(searchParams, "/insights");
 
   if (shellData.state === "pin_required") {
     return <AuthGate gateState={shellData}>{null}</AuthGate>;

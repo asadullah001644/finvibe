@@ -13,7 +13,12 @@ interface CategoriesPageProps {
 export default async function CategoriesPage({
   searchParams,
 }: CategoriesPageProps) {
-  const shellData = await getAuthenticatedShellData(searchParams);
+  const params = await searchParams;
+  const shellData = await getAuthenticatedShellData(
+    Promise.resolve(params),
+    "/categories",
+    { group: params.group, category: params.category },
+  );
 
   if (shellData.state === "pin_required") {
     return <AuthGate gateState={shellData}>{null}</AuthGate>;

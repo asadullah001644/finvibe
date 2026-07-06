@@ -2,8 +2,10 @@ import { ClearAppShell } from "@/components/AppShellProvider";
 import PinTabGate from "@/components/PinTabGate";
 import PinUnlock from "@/components/PinUnlock";
 import { getProfileOrDefault, getSessionUser, isSuperAdmin } from "@/lib/auth";
+import { resolveDefaultMonthKeyForUser } from "@/actions/dbActions";
 import { resolveMonthKey } from "@/lib/month";
 import { loadMonthShellData } from "@/lib/loadMonthData";
+import { buildMonthUrl } from "@/lib/navigation";
 import { resolveDisplayName } from "@/lib/profileDisplay";
 import { isPinSessionValid } from "@/lib/pinSession";
 import type { Profile } from "@/lib/types";
@@ -74,11 +76,18 @@ export type ShellGateState =
 
 export async function getAuthenticatedShellData(
   searchParams: Promise<MonthSearchParams>,
+  pathname: string,
+  extraParams?: Record<string, string | string[] | undefined>,
 ): Promise<ShellGateState> {
   const [gate, params] = await Promise.all([getAppAuthGate(), searchParams]);
 
   if (gate.state === "pin_required") {
     return { state: "pin_required", userId: gate.userId };
+  }
+
+  if (!params.month) {
+    const monthKey = await resolveDefaultMonthKeyForUser();
+    redirect(buildMonthUrl(pathname, monthKey, extraParams));
   }
 
   const monthKey = resolveMonthKey(params.month);

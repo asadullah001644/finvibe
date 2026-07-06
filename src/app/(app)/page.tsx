@@ -11,7 +11,7 @@ interface OverviewPageProps {
 }
 
 export default async function OverviewPage({ searchParams }: OverviewPageProps) {
-  const shellData = await getAuthenticatedShellData(searchParams);
+  const shellData = await getAuthenticatedShellData(searchParams, "/");
 
   if (shellData.state === "pin_required") {
     return <AuthGate gateState={shellData}>{null}</AuthGate>;

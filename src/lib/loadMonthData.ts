@@ -63,7 +63,8 @@ async function loadMonthShellDataImpl(monthKey: string): Promise<MonthShellData>
         ? formatMonthLabel(carriedFromMonthKey)
         : undefined,
     };
-  } catch {
+  } catch (error) {
+    console.error("loadMonthShellData:", error);
     return {
       monthKey,
       monthLabel,
@@ -83,7 +84,8 @@ async function loadMonthExpensesImpl(monthKey: string): Promise<MonthExpense[]> 
 
     const loadedExpenses = await getExpensesForMonth(monthKey);
     return Array.isArray(loadedExpenses) ? loadedExpenses : [];
-  } catch {
+  } catch (error) {
+    console.error("loadMonthExpenses:", error);
     return [];
   }
 }

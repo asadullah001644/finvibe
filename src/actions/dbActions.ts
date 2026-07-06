@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { getSessionUser } from "@/lib/auth";
+import { resolveMonthKey } from "@/lib/month";
 import type {
   Budget,
   BudgetCategory,
@@ -570,6 +571,54 @@ export async function getExpensesForMonth(
       tags: [expensesTag(user.id, monthKey), userDataTag(user.id)],
     },
   )();
+}
+
+async function getMostRecentBudgetMonthKey(
+  userId: string,
+): Promise<string | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("budgets")
+    .select("month_key, total_salary, savings_goal, categories")
+    .eq("user_id", userId)
+    .order("month_key", { ascending: false });
+
+  if (error || !data?.length) {
+    return null;
+  }
+
+  for (const row of data) {
+    const budget = mapBudgetRow(row as BudgetRow, row.month_key);
+    if (isMeaningfulBudget(budget)) {
+      return row.month_key;
+    }
+  }
+
+  return data[0]?.month_key ?? null;
+}
+
+/** Month to open when the URL has no ?month= — prefers current month if it has data. */
+export async function resolveDefaultMonthKeyForUser(): Promise<string> {
+  const current = resolveMonthKey(undefined);
+  const user = await getSessionUser();
+
+  if (!user) {
+    return current;
+  }
+
+  const currentBudget = await getBudget(current);
+  if (currentBudget && isMeaningfulBudget(currentBudget)) {
+    return current;
+  }
+
+  const currentExpenses = await getExpensesForMonth(current);
+  if (currentExpenses.length > 0) {
+    return current;
+  }
+
+  const recentMonth = await getMostRecentBudgetMonthKey(user.id);
+  return recentMonth ?? current;
 }
 
 export async function getRecurringExpenses(): Promise<RecurringExpense[]> {

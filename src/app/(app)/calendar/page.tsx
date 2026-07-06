@@ -11,7 +11,7 @@ interface CalendarPageProps {
 }
 
 export default async function CalendarPage({ searchParams }: CalendarPageProps) {
-  const shellData = await getAuthenticatedShellData(searchParams);
+  const shellData = await getAuthenticatedShellData(searchParams, "/calendar");
 
   if (shellData.state === "pin_required") {
     return <AuthGate gateState={shellData}>{null}</AuthGate>;

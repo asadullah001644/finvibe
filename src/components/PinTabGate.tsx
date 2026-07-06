@@ -1,6 +1,7 @@
 "use client";
 
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ClearAppShell } from "@/components/AppShellProvider";
 import PinUnlock from "@/components/PinUnlock";
 import {
@@ -21,6 +22,9 @@ export default function PinTabGate({
   pinLockEnabled,
   children,
 }: PinTabGateProps) {
+  const router = useRouter();
+  const shouldRefreshOnUnlockRef = useRef(pinLockEnabled);
+
   // "checking" matches server + first client paint — never assume locked (avoids PIN flash).
   const [status, setStatus] = useState<PinTabStatus>(
     pinLockEnabled ? "checking" : "unlocked",
@@ -32,8 +36,18 @@ export default function PinTabGate({
       return;
     }
 
-    setStatus(isPinTabAccessGranted(userId) ? "unlocked" : "locked");
-  }, [pinLockEnabled, userId]);
+    if (isPinTabAccessGranted(userId)) {
+      setStatus("unlocked");
+      if (shouldRefreshOnUnlockRef.current) {
+        shouldRefreshOnUnlockRef.current = false;
+        router.refresh();
+      }
+      return;
+    }
+
+    shouldRefreshOnUnlockRef.current = false;
+    setStatus("locked");
+  }, [pinLockEnabled, router, userId]);
 
   if (status === "unlocked") {
     return <>{children}</>;
