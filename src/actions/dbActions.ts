@@ -184,14 +184,22 @@ function mapExpenseRow(row: ExpenseRow): SerializedExpense {
   };
 }
 
-async function fetchBudget(monthKey: string): Promise<Budget | null> {
+async function fetchBudget(
+  monthKey: string,
+  userId?: string | null,
+): Promise<Budget | null> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("budgets")
     .select(BUDGET_COLUMNS)
-    .eq("month_key", monthKey)
-    .maybeSingle();
+    .eq("month_key", monthKey);
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     console.error("Error fetching budget:", error);
@@ -209,7 +217,7 @@ export async function getBudget(monthKey: string): Promise<Budget | null> {
   }
 
   return unstable_cache(
-    () => fetchBudget(monthKey),
+    () => fetchBudget(monthKey, user.id),
     ["budget", user.id, monthKey],
     {
       revalidate: 30,
@@ -222,14 +230,20 @@ export async function getMostRecentPriorBudget(
   monthKey: string,
 ): Promise<Budget | null> {
   const supabase = await createClient();
+  const user = await getSessionUser();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("budgets")
     .select(BUDGET_COLUMNS)
     .lt("month_key", monthKey)
     .order("month_key", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+
+  if (user?.id) {
+    query = query.eq("user_id", user.id);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     console.error("Error fetching prior budget:", error);
@@ -328,23 +342,32 @@ async function patchBudgetRow(
   insertDefaults: BudgetInsertDefaults,
 ) {
   const supabase = await createClient();
+  const user = await getSessionUser();
+  const userId = user?.id;
 
   const applyUpdate = async () => {
-    const { error } = await supabase
-      .from("budgets")
-      .update(fields)
-      .eq("month_key", monthKey);
+    let query = supabase.from("budgets").update(fields).eq("month_key", monthKey);
+    if (userId) {
+      query = query.eq("user_id", userId);
+    }
+
+    const { error } = await query;
 
     if (error) {
       throw new Error(error.message);
     }
   };
 
-  const { data: existing, error: fetchError } = await supabase
+  let fetchQuery = supabase
     .from("budgets")
     .select("month_key")
-    .eq("month_key", monthKey)
-    .maybeSingle();
+    .eq("month_key", monthKey);
+
+  if (userId) {
+    fetchQuery = fetchQuery.eq("user_id", userId);
+  }
+
+  const { data: existing, error: fetchError } = await fetchQuery.maybeSingle();
 
   if (fetchError) {
     throw new Error(fetchError.message);
