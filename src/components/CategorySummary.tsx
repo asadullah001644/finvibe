@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, ArrowRight } from "lucide-react";
+import { AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
+import { useAppShellActions } from "@/components/AppShellProvider";
 import { formatCurrency } from "@/lib/currency";
 import {
   getOverviewCategoryHighlights,
@@ -91,6 +92,10 @@ export default function CategorySummary({
   expenses,
   onOpenCategories,
 }: CategorySummaryProps) {
+  const { openCategories, pendingModalAction } = useAppShellActions();
+  const isOpeningCategories = pendingModalAction === "categories";
+  const handleOpenCategories = onOpenCategories ?? openCategories;
+
   const { topSpenders, overBudget, totalSpent, hasLimitsSet } =
     getOverviewCategoryHighlights(categories, expenses);
 
@@ -128,12 +133,17 @@ export default function CategorySummary({
           <p className="text-sm text-zinc-500">
             No spending logged yet this month.
           </p>
-          {onOpenCategories && !hasLimitsSet && (
+          {handleOpenCategories && !hasLimitsSet && (
             <button
               type="button"
-              onClick={onOpenCategories}
-              className="text-sm font-medium text-neonViolet transition-colors hover:text-neonViolet/80"
+              onClick={handleOpenCategories}
+              disabled={isOpeningCategories}
+              aria-busy={isOpeningCategories}
+              className="inline-flex items-center gap-2 text-sm font-medium text-neonViolet transition-colors hover:text-neonViolet/80 disabled:opacity-70"
             >
+              {isOpeningCategories && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              )}
               Set category limits (optional)
             </button>
           )}
@@ -171,12 +181,17 @@ export default function CategorySummary({
             </div>
           )}
 
-          {!hasLimitsSet && onOpenCategories && (
+          {handleOpenCategories && !hasLimitsSet && (
             <button
               type="button"
-              onClick={onOpenCategories}
-              className="text-sm text-zinc-500 transition-colors hover:text-neonEmerald"
+              onClick={handleOpenCategories}
+              disabled={isOpeningCategories}
+              aria-busy={isOpeningCategories}
+              className="inline-flex items-center gap-2 text-sm text-zinc-500 transition-colors hover:text-neonEmerald disabled:opacity-70"
             >
+              {isOpeningCategories && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              )}
               Optional: set category limits →
             </button>
           )}

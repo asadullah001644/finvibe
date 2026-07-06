@@ -30,6 +30,7 @@ import { getLocalTodayDateString } from "@/lib/expenseDate";
 
 interface QuickLogContextValue {
   open: () => void;
+  isOpening: boolean;
 }
 
 const QuickLogContext = createContext<QuickLogContextValue | null>(null);
@@ -72,38 +73,52 @@ const standaloneFieldClass =
   "h-11 w-full rounded-xl border border-cardBorder/70 bg-[#0C0C0F]/60 px-3.5 text-sm text-zinc-100 outline-none ring-1 ring-white/[0.02] transition-colors placeholder:text-zinc-600 focus:border-neonViolet/50 focus:ring-neonViolet/20";
 
 export function QuickLogNavButton() {
-  const { open } = useQuickLog();
+  const { open, isOpening } = useQuickLog();
 
   return (
     <motion.button
       type="button"
       aria-label="Add expense"
-      whileTap={{ scale: 0.92 }}
+      aria-busy={isOpening}
+      disabled={isOpening}
+      whileTap={isOpening ? undefined : { scale: 0.92 }}
       transition={{ type: "spring", stiffness: 500, damping: 28 }}
       onClick={open}
-      className="relative -mt-6 flex h-14 w-14 items-center justify-center"
+      className="relative -mt-6 flex h-14 w-14 items-center justify-center disabled:opacity-80"
     >
-      <span className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-neonEmerald/35" />
+      {!isOpening && (
+        <span className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-neonEmerald/35" />
+      )}
       <span className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-neonEmerald bg-card text-neonEmerald shadow-[0_0_28px_rgba(16,185,129,0.45)]">
-        <Plus className="h-6 w-6" strokeWidth={2.25} />
+        {isOpening ? (
+          <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+        ) : (
+          <Plus className="h-6 w-6" strokeWidth={2.25} />
+        )}
       </span>
     </motion.button>
   );
 }
 
 export function QuickLogDesktopButton() {
-  const { open } = useQuickLog();
+  const { open, isOpening } = useQuickLog();
 
   return (
     <motion.button
       type="button"
       aria-label="Add expense"
-      whileTap={{ scale: 0.96 }}
+      aria-busy={isOpening}
+      disabled={isOpening}
+      whileTap={isOpening ? undefined : { scale: 0.96 }}
       transition={{ type: "spring", stiffness: 500, damping: 28 }}
       onClick={open}
-      className="fixed bottom-8 right-8 z-40 hidden h-14 items-center gap-2 rounded-full border border-neonEmerald/40 bg-card px-5 text-sm font-semibold text-neonEmerald shadow-[0_0_28px_rgba(16,185,129,0.25)] lg:inline-flex"
+      className="fixed bottom-8 right-8 z-40 hidden h-14 items-center gap-2 rounded-full border border-neonEmerald/40 bg-card px-5 text-sm font-semibold text-neonEmerald shadow-[0_0_28px_rgba(16,185,129,0.25)] disabled:opacity-80 lg:inline-flex"
     >
-      <Plus className="h-5 w-5" strokeWidth={2.25} />
+      {isOpening ? (
+        <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+      ) : (
+        <Plus className="h-5 w-5" strokeWidth={2.25} />
+      )}
       Add Expense
     </motion.button>
   );
@@ -124,6 +139,7 @@ export default function QuickLogFAB({
 
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
   const isDesktop = useIsDesktop();
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
@@ -134,6 +150,17 @@ export default function QuickLogFAB({
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsOpening(false);
+    }
+  }, [isOpen]);
+
+  const openSheet = useCallback(() => {
+    setIsOpening(true);
+    setIsOpen(true);
   }, []);
 
   useEffect(() => {
@@ -363,7 +390,7 @@ export default function QuickLogFAB({
   );
 
   return (
-    <QuickLogContext.Provider value={{ open: () => setIsOpen(true) }}>
+    <QuickLogContext.Provider value={{ open: openSheet, isOpening }}>
       {children}
       <QuickLogDesktopButton />
       {mounted && createPortal(modal, document.body)}

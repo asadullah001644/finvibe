@@ -28,7 +28,7 @@ export default function OverviewContent({
   budget,
   expenses,
 }: OverviewContentProps) {
-  const { openIncome, openCategories } = useAppShellActions();
+  const { openCategories } = useAppShellActions();
 
   const hasBudgetMetrics = budget.totalSalary > 0 || budget.savingsGoal > 0;
   const totalSpent = expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -43,7 +43,7 @@ export default function OverviewContent({
   return (
     <div className="grid gap-6">
       {!hasBudgetMetrics ? (
-        <SetupHero onSetup={openIncome} />
+        <SetupHero />
       ) : (
         <SummaryStrip
           salary={budget.totalSalary}

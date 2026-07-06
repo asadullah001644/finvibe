@@ -1,13 +1,18 @@
 "use client";
 
 import AppLogo from "@/components/AppLogo";
+import { useAppShellActions } from "@/components/AppShellProvider";
+import { LoadingButtonContent } from "@/components/ui/loading-button-content";
 import { APP_NAME } from "@/lib/branding";
 
 interface SetupHeroProps {
-  onSetup: () => void;
+  onSetup?: () => void;
 }
 
 export default function SetupHero({ onSetup }: SetupHeroProps) {
+  const { openIncome, pendingModalAction } = useAppShellActions();
+  const isLoading = pendingModalAction === "income";
+
   return (
     <section className="rounded-2xl border border-neonViolet/25 bg-gradient-to-br from-neonViolet/10 via-card/40 to-card/20 p-6 sm:p-8">
       <div className="mx-auto max-w-xl text-center">
@@ -24,10 +29,14 @@ export default function SetupHero({ onSetup }: SetupHeroProps) {
         </p>
         <button
           type="button"
-          onClick={onSetup}
-          className="mt-5 inline-flex items-center justify-center rounded-xl border border-neonViolet/40 bg-neonViolet/15 px-6 py-3 text-sm font-semibold text-neonViolet transition-colors hover:bg-neonViolet/25"
+          onClick={onSetup ?? openIncome}
+          disabled={isLoading}
+          aria-busy={isLoading}
+          className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl border border-neonViolet/40 bg-neonViolet/15 px-6 py-3 text-sm font-semibold text-neonViolet transition-colors hover:bg-neonViolet/25 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          Set Income
+          <LoadingButtonContent isLoading={isLoading} loadingLabel="Opening income settings">
+            Set Income
+          </LoadingButtonContent>
         </button>
       </div>
     </section>

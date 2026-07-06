@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -20,6 +21,7 @@ import ContentSubtleRefresh from "@/components/ContentSubtleRefresh";
 import QuickLogFAB from "@/components/QuickLogFAB";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import type { AppTab } from "@/lib/navigation";
+import type { ModalAction } from "@/lib/modalActions";
 import type { BudgetCategory } from "@/lib/types";
 
 interface AppShellBudget {
@@ -44,7 +46,11 @@ export interface AppShellMonthData {
 interface AppShellActions {
   openIncome: () => void;
   openCategories: () => void;
+  openRecurring: () => void;
+  pendingModalAction: ModalAction | null;
 }
+
+export type { ModalAction };
 
 interface AppShellControlContextValue {
   syncMonthData: (data: AppShellMonthData) => void;
@@ -128,6 +134,15 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
   const [incomeOpen, setIncomeOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [recurringOpen, setRecurringOpen] = useState(false);
+  const [pendingModalAction, setPendingModalAction] = useState<ModalAction | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (incomeOpen || categoriesOpen || recurringOpen) {
+      setPendingModalAction(null);
+    }
+  }, [incomeOpen, categoriesOpen, recurringOpen]);
 
   const syncMonthData = useCallback((data: AppShellMonthData) => {
     setMonthData((current) => {
@@ -157,10 +172,21 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
 
   const actions = useMemo<AppShellActions>(
     () => ({
-      openIncome: () => setIncomeOpen(true),
-      openCategories: () => setCategoriesOpen(true),
+      openIncome: () => {
+        setPendingModalAction("income");
+        setIncomeOpen(true);
+      },
+      openCategories: () => {
+        setPendingModalAction("categories");
+        setCategoriesOpen(true);
+      },
+      openRecurring: () => {
+        setPendingModalAction("recurring");
+        setRecurringOpen(true);
+      },
+      pendingModalAction,
     }),
-    [],
+    [pendingModalAction],
   );
 
   const categoryNames =

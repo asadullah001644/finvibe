@@ -10,6 +10,7 @@ import IncomeSettings from "@/components/IncomeSettings";
 import LockButton from "@/components/LockButton";
 import SignOutButton from "@/components/SignOutButton";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
+import { useAppShellActions } from "@/components/AppShellProvider";
 import RecurringExpensesSettings from "@/components/RecurringExpensesSettings";
 import { APP_TABS, buildMonthUrl, getActiveTabFromPathname } from "@/lib/navigation";
 import type { BudgetCategory } from "@/lib/types";
@@ -93,6 +94,8 @@ export default function AppHeader({
   pinLockEnabled = false,
 }: AppHeaderProps) {
   const { navigate } = useAppNavigation();
+  const { openIncome, openCategories, openRecurring, pendingModalAction } =
+    useAppShellActions();
   const pathname = usePathname();
   const desktopMonthInputRef = useRef<HTMLInputElement>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -197,9 +200,10 @@ export default function AppHeader({
           <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-cardBorder/70 bg-card/30 p-2 lg:gap-2.5">
             <BudgetToolButtons
               hasLimitsSet={hasLimitsSet}
-              onOpenIncome={() => onIncomeOpenChange(true)}
-              onOpenCategories={() => onCategoriesOpenChange(true)}
-              onOpenRecurring={() => onRecurringOpenChange(true)}
+              loadingAction={pendingModalAction}
+              onOpenIncome={openIncome}
+              onOpenCategories={openCategories}
+              onOpenRecurring={openRecurring}
             />
             <MonthPicker
               id="app-header-month-desktop"
@@ -226,9 +230,10 @@ export default function AppHeader({
         isSuperAdmin={isSuperAdmin}
         hasLimitsSet={hasLimitsSet}
         pinLockEnabled={pinLockEnabled}
-        onOpenIncome={() => onIncomeOpenChange(true)}
-        onOpenCategories={() => onCategoriesOpenChange(true)}
-        onOpenRecurring={() => onRecurringOpenChange(true)}
+        onOpenIncome={openIncome}
+        onOpenCategories={openCategories}
+        onOpenRecurring={openRecurring}
+        pendingModalAction={pendingModalAction}
         onMonthChange={handleMonthChange}
       />
     </header>

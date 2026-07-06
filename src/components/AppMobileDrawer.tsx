@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Calendar, Settings, Shield } from "lucide-react";
+import { Calendar, Loader2, Settings, Shield } from "lucide-react";
 import BudgetToolButtons from "@/components/BudgetToolButtons";
 import LockButton from "@/components/LockButton";
 import SignOutButton from "@/components/SignOutButton";
 import AppLogo from "@/components/AppLogo";
 import { ModalBackdrop, ModalCloseButton } from "@/components/ui/modal";
+import type { ModalAction } from "@/lib/modalActions";
+import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { resolveDisplayInitial } from "@/lib/profileDisplay";
 
 interface AppMobileDrawerProps {
@@ -26,6 +28,7 @@ interface AppMobileDrawerProps {
   onOpenIncome: () => void;
   onOpenCategories: () => void;
   onOpenRecurring: () => void;
+  pendingModalAction?: ModalAction | null;
   onMonthChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
@@ -43,8 +46,10 @@ export default function AppMobileDrawer({
   onOpenIncome,
   onOpenCategories,
   onOpenRecurring,
+  pendingModalAction = null,
   onMonthChange,
 }: AppMobileDrawerProps) {
+  const { navigate, pendingHref } = useAppNavigation();
   const [mounted, setMounted] = useState(false);
   const monthInputRef = useRef<HTMLInputElement>(null);
   const initial = resolveDisplayInitial(userDisplayName);
@@ -164,6 +169,7 @@ export default function AppMobileDrawer({
                   <BudgetToolButtons
                     layout="drawer"
                     hasLimitsSet={hasLimitsSet}
+                    loadingAction={pendingModalAction}
                     onOpenIncome={openIncome}
                     onOpenCategories={openCategories}
                     onOpenRecurring={openRecurring}
@@ -176,26 +182,65 @@ export default function AppMobileDrawer({
                   Account
                 </p>
                 <div className="space-y-1">
-                  <Link
-                    href="/settings"
-                    prefetch
-                    onClick={onClose}
-                    className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium text-zinc-300 transition-colors hover:bg-card/60 hover:text-zinc-100"
-                  >
-                    <Settings className="h-5 w-5 shrink-0 text-zinc-400" />
-                    Settings
-                  </Link>
-                  {isSuperAdmin && (
-                    <Link
-                      href="/admin"
-                      prefetch
-                      onClick={onClose}
-                      className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium text-zinc-300 transition-colors hover:bg-card/60 hover:text-neonViolet"
-                    >
-                      <Shield className="h-5 w-5 shrink-0 text-zinc-400" />
-                      Admin
-                    </Link>
-                  )}
+                  {(() => {
+                    const settingsPending = pendingHref === "/settings";
+
+                    return (
+                      <Link
+                        href="/settings"
+                        prefetch={false}
+                        data-app-nav="manual"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          onClose();
+                          navigate("/settings");
+                        }}
+                        aria-busy={settingsPending}
+                        className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
+                          settingsPending
+                            ? "bg-neonViolet/10 text-neonViolet/80"
+                            : "text-zinc-300 hover:bg-card/60 hover:text-zinc-100"
+                        } ${settingsPending ? "pointer-events-none" : ""}`}
+                      >
+                        {settingsPending ? (
+                          <Loader2 className="h-5 w-5 shrink-0 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Settings className="h-5 w-5 shrink-0 text-zinc-400" />
+                        )}
+                        Settings
+                      </Link>
+                    );
+                  })()}
+                  {isSuperAdmin &&
+                    (() => {
+                      const adminPending = pendingHref === "/admin";
+
+                      return (
+                        <Link
+                          href="/admin"
+                          prefetch={false}
+                          data-app-nav="manual"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            onClose();
+                            navigate("/admin");
+                          }}
+                          aria-busy={adminPending}
+                          className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
+                            adminPending
+                              ? "bg-neonViolet/10 text-neonViolet/80"
+                              : "text-zinc-300 hover:bg-card/60 hover:text-neonViolet"
+                          } ${adminPending ? "pointer-events-none" : ""}`}
+                        >
+                          {adminPending ? (
+                            <Loader2 className="h-5 w-5 shrink-0 animate-spin" aria-hidden="true" />
+                          ) : (
+                            <Shield className="h-5 w-5 shrink-0 text-zinc-400" />
+                          )}
+                          Admin
+                        </Link>
+                      );
+                    })()}
                   {pinLockEnabled && (
                     <div className="px-1 [&_button]:w-full [&_button]:min-h-12 [&_button]:justify-start [&_button]:gap-3 [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-3 [&_button]:hover:bg-card/60">
                       <LockButton />

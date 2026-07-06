@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   Calendar,
   LayoutDashboard,
+  Loader2,
   Settings,
   Shield,
   Sparkles,
@@ -40,7 +41,7 @@ export default function AppDesktopSidebar({
 }: AppDesktopSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { navigate } = useAppNavigation();
+  const { navigate, pendingHref } = useAppNavigation();
   const activeTab = getActiveTabFromPathname(pathname);
   const currentMonthKey = resolveMonthKey(searchParams.get("month") ?? undefined);
   const initial = resolveDisplayInitial(userDisplayName);
@@ -72,6 +73,7 @@ export default function AppDesktopSidebar({
             const Icon = TAB_ICONS[tab.id];
             const href = buildMonthUrl(tab.href, currentMonthKey);
             const isActive = activeTab === tab.id;
+            const isPending = pendingHref === href;
 
             return (
               <Link
@@ -83,14 +85,21 @@ export default function AppDesktopSidebar({
                   event.preventDefault();
                   navigate(href);
                 }}
+                aria-busy={isPending}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                   isActive
                     ? "border border-neonViolet/30 bg-neonViolet/10 text-neonViolet"
-                    : "text-zinc-400 hover:bg-card/60 hover:text-zinc-100"
-                }`}
+                    : isPending
+                      ? "border border-neonViolet/20 bg-neonViolet/5 text-neonViolet/80"
+                      : "text-zinc-400 hover:bg-card/60 hover:text-zinc-100"
+                } ${isPending ? "pointer-events-none" : ""}`}
                 aria-current={isActive ? "page" : undefined}
               >
-                <Icon className="h-4 w-4" strokeWidth={isActive ? 2.25 : 2} />
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Icon className="h-4 w-4" strokeWidth={isActive ? 2.25 : 2} />
+                )}
                 {tab.label}
               </Link>
             );
@@ -98,24 +107,63 @@ export default function AppDesktopSidebar({
         </nav>
 
         <div className="mt-4 shrink-0 space-y-1 border-t border-cardBorder/60 pt-5">
-          <Link
-            href="/settings"
-            prefetch
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-card/60 hover:text-zinc-100"
-          >
-            <Settings className="h-4 w-4" />
-            Settings
-          </Link>
-          {isSuperAdmin && (
-            <Link
-              href="/admin"
-              prefetch
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-card/60 hover:text-neonViolet"
-            >
-              <Shield className="h-4 w-4" />
-              Admin
-            </Link>
-          )}
+          {(() => {
+            const settingsPending = pendingHref === "/settings";
+
+            return (
+              <Link
+                href="/settings"
+                prefetch={false}
+                data-app-nav="manual"
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigate("/settings");
+                }}
+                aria-busy={settingsPending}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  settingsPending
+                    ? "bg-neonViolet/10 text-neonViolet/80"
+                    : "text-zinc-400 hover:bg-card/60 hover:text-zinc-100"
+                } ${settingsPending ? "pointer-events-none" : ""}`}
+              >
+                {settingsPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Settings className="h-4 w-4" />
+                )}
+                Settings
+              </Link>
+            );
+          })()}
+          {isSuperAdmin &&
+            (() => {
+              const adminPending = pendingHref === "/admin";
+
+              return (
+                <Link
+                  href="/admin"
+                  prefetch={false}
+                  data-app-nav="manual"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    navigate("/admin");
+                  }}
+                  aria-busy={adminPending}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                    adminPending
+                      ? "bg-neonViolet/10 text-neonViolet/80"
+                      : "text-zinc-400 hover:bg-card/60 hover:text-neonViolet"
+                  } ${adminPending ? "pointer-events-none" : ""}`}
+                >
+                  {adminPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Shield className="h-4 w-4" />
+                  )}
+                  Admin
+                </Link>
+              );
+            })()}
         </div>
       </div>
     </aside>

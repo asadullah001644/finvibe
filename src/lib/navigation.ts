@@ -69,3 +69,12 @@ export function getActiveTabFromPathname(pathname: string): AppTab {
 
   return "overview";
 }
+
+export function isAppShellTabPath(pathname: string): boolean {
+  return (
+    pathname === "/" ||
+    pathname.startsWith("/categories") ||
+    pathname.startsWith("/calendar") ||
+    pathname.startsWith("/insights")
+  );
+}

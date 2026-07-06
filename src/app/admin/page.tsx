@@ -1,4 +1,5 @@
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import NavigationContentReady from "@/components/NavigationContentReady";
 import { getAdminPageDataAction } from "@/actions/adminActions";
 import { AuthGate, getAppAuthGate } from "@/lib/pageHelpers";
 
@@ -12,10 +13,13 @@ export default async function AdminPage() {
   const { users, schemaReady, schemaMessage } = await getAdminPageDataAction();
 
   return (
-    <AdminDashboard
-      initialUsers={users}
-      schemaReady={schemaReady}
-      schemaMessage={schemaMessage}
-    />
+    <>
+      <NavigationContentReady />
+      <AdminDashboard
+        initialUsers={users}
+        schemaReady={schemaReady}
+        schemaMessage={schemaMessage}
+      />
+    </>
   );
 }

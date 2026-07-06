@@ -15,11 +15,11 @@ export default function ContentLoadingOverlay() {
       role="status"
       aria-live="polite"
       aria-label="Loading page"
-      className="absolute inset-0 z-20 flex min-h-[50vh] items-start justify-center bg-[#09090B] pt-24"
+      className="absolute inset-0 z-20 flex min-h-[50vh] items-start justify-center bg-[#09090B]/75 pt-24 backdrop-blur-[1px]"
     >
-      <div className="flex items-center gap-2 rounded-full border border-cardBorder/80 bg-card px-4 py-2 shadow-lg">
+      <div className="flex items-center gap-2 rounded-full border border-neonViolet/30 bg-card px-4 py-2 shadow-[0_0_24px_rgba(139,92,246,0.2)]">
         <Loader2 className="h-4 w-4 animate-spin text-neonViolet" />
-        <span className="text-sm text-zinc-400">Loading</span>
+        <span className="text-sm text-zinc-300">Loading page…</span>
       </div>
     </div>
   );

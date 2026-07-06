@@ -10,6 +10,8 @@ import {
   useTransition,
   type ReactNode,
 } from "react";
+import NavigationProgressBar from "@/components/NavigationProgressBar";
+import { isAppShellTabPath } from "@/lib/navigation";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 interface NavigationContextValue {
@@ -17,6 +19,7 @@ interface NavigationContextValue {
   refresh: () => Promise<void>;
   isNavigating: boolean;
   isRefreshing: boolean;
+  pendingHref: string | null;
   markContentReady: () => void;
 }
 
@@ -46,6 +49,7 @@ export default function NavigationLoadingProvider({
   const [isRoutePending, startRouteTransition] = useTransition();
   const [isRefreshPending, startRefreshTransition] = useTransition();
   const [isNavigating, setIsNavigating] = useState(false);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const targetHrefRef = useRef<string | null>(null);
   const refreshResolveRef = useRef<(() => void) | null>(null);
   const contentPendingRef = useRef(false);
@@ -66,6 +70,7 @@ export default function NavigationLoadingProvider({
 
     if (locationKey === targetKey && !isRoutePending) {
       setIsNavigating(false);
+      setPendingHref(null);
       targetHrefRef.current = null;
     }
   }, [isNavigating, isRoutePending, locationKey]);
@@ -109,7 +114,9 @@ export default function NavigationLoadingProvider({
       }
 
       targetHrefRef.current = href;
-      contentPendingRef.current = true;
+      const targetPath = href.split("?")[0] ?? href;
+      contentPendingRef.current = isAppShellTabPath(targetPath);
+      setPendingHref(href);
       setIsNavigating(true);
 
       startRouteTransition(() => {
@@ -175,9 +182,11 @@ export default function NavigationLoadingProvider({
         refresh,
         isNavigating: showRouteOverlay,
         isRefreshing: isRefreshPending,
+        pendingHref,
         markContentReady,
       }}
     >
+      <NavigationProgressBar />
       {children}
     </NavigationContext.Provider>
   );

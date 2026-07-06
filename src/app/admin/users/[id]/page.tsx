@@ -1,4 +1,5 @@
 import Link from "next/link";
+import NavigationContentReady from "@/components/NavigationContentReady";
 import { formatCurrency } from "@/lib/currency";
 import { getAdminUserDataAction, getAdminUserProfileAction } from "@/actions/adminActions";
 import { AuthGate, getAppAuthGate } from "@/lib/pageHelpers";
@@ -42,6 +43,7 @@ export default async function AdminUserPage({ params, searchParams }: AdminUserP
 
   return (
     <main className="min-h-screen bg-[#09090B] px-3 py-6 pb-10 text-zinc-100 sm:px-4 sm:py-8">
+      <NavigationContentReady />
       <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">

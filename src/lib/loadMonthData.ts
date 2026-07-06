@@ -35,7 +35,9 @@ export interface MonthData extends MonthShellData {
   expenses: MonthExpense[];
 }
 
-const seedRecurringForMonthCached = cache(seedRecurringExpensesForMonth);
+const seedRecurringForMonthCached = cache((monthKey: string) =>
+  seedRecurringExpensesForMonth(monthKey, { revalidate: false }),
+);
 
 async function loadMonthShellDataImpl(monthKey: string): Promise<MonthShellData> {
   const monthLabel = format(monthKeyToDate(monthKey), "MMMM yyyy");

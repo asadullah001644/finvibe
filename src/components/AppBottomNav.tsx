@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Calendar, LayoutDashboard, Sparkles, Tags } from "lucide-react";
+import { Calendar, LayoutDashboard, Loader2, Sparkles, Tags } from "lucide-react";
 import { QuickLogNavButton } from "@/components/QuickLogFAB";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import {
@@ -27,7 +27,8 @@ interface NavTabLinkProps {
 }
 
 function NavTabLink({ href, isActive, label, icon: Icon }: NavTabLinkProps) {
-  const { navigate } = useAppNavigation();
+  const { navigate, pendingHref } = useAppNavigation();
+  const isPending = pendingHref === href;
 
   return (
     <Link
@@ -38,14 +39,21 @@ function NavTabLink({ href, isActive, label, icon: Icon }: NavTabLinkProps) {
         event.preventDefault();
         navigate(href);
       }}
+      aria-busy={isPending}
       className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2.5 text-xs font-medium transition-colors sm:px-2 sm:text-xs lg:gap-1 lg:px-1 lg:py-2 lg:text-[10px] ${
         isActive
           ? "bg-neonViolet/15 text-neonViolet"
-          : "text-zinc-500 hover:bg-card hover:text-zinc-300"
-      }`}
+          : isPending
+            ? "bg-neonViolet/10 text-neonViolet/80"
+            : "text-zinc-500 hover:bg-card hover:text-zinc-300"
+      } ${isPending ? "pointer-events-none" : ""}`}
       aria-current={isActive ? "page" : undefined}
     >
-      <Icon className="h-6 w-6 lg:h-5 lg:w-5" strokeWidth={isActive ? 2.25 : 2} />
+      {isPending ? (
+        <Loader2 className="h-6 w-6 animate-spin lg:h-5 lg:w-5" aria-hidden="true" />
+      ) : (
+        <Icon className="h-6 w-6 lg:h-5 lg:w-5" strokeWidth={isActive ? 2.25 : 2} />
+      )}
       {label}
     </Link>
   );

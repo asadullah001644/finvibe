@@ -22,6 +22,10 @@ function expensesTag(userId: string, monthKey: string): string {
   return `expenses-${userId}-${monthKey}`;
 }
 
+interface DbWriteOptions {
+  revalidate?: boolean;
+}
+
 async function revalidateAppData(): Promise<void> {
   revalidatePath("/", "layout");
 
@@ -288,7 +292,8 @@ async function createEmptyBudget(monthKey: string): Promise<Budget> {
 export async function ensureMonthBudget(
   monthKey: string,
 ): Promise<EnsureMonthBudgetResult> {
-  const existing = await getBudget(monthKey);
+  const user = await getSessionUser();
+  const existing = await fetchBudget(monthKey, user?.id);
 
   if (existing && isMeaningfulBudget(existing)) {
     return { budget: existing };
@@ -311,6 +316,7 @@ export async function ensureMonthBudget(
         savings_goal: prior.savingsGoal,
         categories: carriedCategories,
       },
+      { revalidate: false },
     );
 
     return {
@@ -341,6 +347,7 @@ async function patchBudgetRow(
   monthKey: string,
   fields: BudgetPatchFields,
   insertDefaults: BudgetInsertDefaults,
+  options: DbWriteOptions = {},
 ) {
   const supabase = await createClient();
   const user = await getSessionUser();
@@ -392,7 +399,9 @@ async function patchBudgetRow(
     }
   }
 
-  await revalidateAppData();
+  if (options.revalidate !== false) {
+    await revalidateAppData();
+  }
 }
 
 export async function updateBudgetIncome(
@@ -739,6 +748,7 @@ export async function deleteRecurringExpense(id: string): Promise<void> {
 
 export async function seedRecurringExpensesForMonth(
   monthKey: string,
+  options: DbWriteOptions = {},
 ): Promise<void> {
   const range = getMonthDateRange(monthKey);
 
@@ -844,5 +854,7 @@ export async function seedRecurringExpensesForMonth(
     throw new Error(error.message);
   }
 
-  await revalidateAppData();
+  if (options.revalidate !== false) {
+    await revalidateAppData();
+  }
 }
