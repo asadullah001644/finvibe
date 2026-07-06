@@ -141,7 +141,7 @@ export function ModalHeader({
 /** Sticky footer with safe-area padding for mobile bottom sheets. */
 export function ModalFooter({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky bottom-0 shrink-0 border-t border-cardBorder/70 bg-card/95 pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm lg:border-t-0 lg:bg-transparent lg:pb-0 lg:pt-0 lg:backdrop-blur-none">
+    <div className="sticky bottom-0 shrink-0 border-t border-cardBorder/70 bg-card/95 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md lg:px-6 lg:pb-5 lg:pt-5">
       {children}
     </div>
   );

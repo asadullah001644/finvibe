@@ -11,7 +11,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Loader2, Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import {
   ModalBackdrop,
   ModalCloseButton,
@@ -19,11 +19,11 @@ import {
   getModalMotionProps,
   useIsDesktop,
 } from "@/components/ui/modal";
+import { CategoryPickerPanel } from "@/components/CategoryPickerUI";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { saveExpenseAction } from "@/lib/actions";
 import {
   getCategoryGroups,
-  getChildCategoryName,
   resolveCategoryHint,
 } from "@/lib/constants";
 import { getLocalTodayDateString } from "@/lib/expenseDate";
@@ -47,7 +47,14 @@ interface QuickLogFABProps {
   children?: ReactNode;
 }
 
-type CategoryGroup = ReturnType<typeof getCategoryGroups>[number];
+function formatSelectedCategoryLabel(category: string): string {
+  const parts = category.split(" › ");
+  if (parts.length <= 1) {
+    return category;
+  }
+
+  return `${parts[0]} · ${parts.slice(1).join(" · ")}`;
+}
 
 const fieldLabelClass =
   "mb-2 block text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500";
@@ -63,187 +70,6 @@ const fieldInputClass =
 
 const standaloneFieldClass =
   "h-11 w-full rounded-xl border border-cardBorder/70 bg-[#0C0C0F]/60 px-3.5 text-sm text-zinc-100 outline-none ring-1 ring-white/[0.02] transition-colors placeholder:text-zinc-600 focus:border-neonViolet/50 focus:ring-neonViolet/20";
-
-function categoryChipClass(isSelected: boolean): string {
-  return [
-    "min-h-11 rounded-xl border px-3 py-2.5 text-sm font-medium transition-all duration-150",
-    isSelected
-      ? "border-neonViolet/70 bg-neonViolet/15 text-neonViolet shadow-[inset_0_0_0_1px_rgba(139,92,246,0.25),0_0_16px_rgba(139,92,246,0.1)]"
-      : "border-cardBorder/80 bg-background/50 text-zinc-300 hover:border-neonViolet/35 hover:bg-card/80",
-  ].join(" ");
-}
-
-function formatSelectedCategoryLabel(category: string): string {
-  const parts = category.split(" › ");
-  if (parts.length <= 1) {
-    return category;
-  }
-
-  return `${parts[0]} · ${parts.slice(1).join(" · ")}`;
-}
-
-function CategoryGroupDropdown({
-  label,
-  items,
-  selectedCategory,
-  onSelect,
-  isOpen,
-  onToggle,
-}: {
-  label: string;
-  items: string[];
-  selectedCategory: string;
-  onSelect: (category: string) => void;
-  isOpen: boolean;
-  onToggle: () => void;
-}) {
-  const hasSelection = items.includes(selectedCategory);
-
-  return (
-    <div
-      className={`overflow-hidden rounded-xl border transition-colors ${
-        hasSelection
-          ? "border-neonViolet/40 bg-neonViolet/[0.06]"
-          : "border-cardBorder/80 bg-background/40"
-      }`}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-white/[0.02]"
-      >
-        <span className="flex min-w-0 items-center gap-2.5">
-          <ChevronDown
-            className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform duration-200 ${
-              isOpen ? "rotate-0" : "-rotate-90"
-            }`}
-          />
-          <span
-            className={`text-sm font-semibold ${
-              hasSelection ? "text-neonViolet" : "text-zinc-200"
-            }`}
-          >
-            {label}
-          </span>
-        </span>
-        {hasSelection && (
-          <span className="truncate rounded-full border border-neonViolet/25 bg-neonViolet/10 px-2.5 py-0.5 text-xs font-medium text-neonViolet">
-            {getChildCategoryName(selectedCategory)}
-          </span>
-        )}
-      </button>
-
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="overflow-hidden"
-          >
-            <div className="border-t border-cardBorder/60 px-3 pb-3 pt-2.5">
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {items.map((item) => {
-                  const isSelected = selectedCategory === item;
-
-                  return (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => onSelect(item)}
-                      className={`${categoryChipClass(isSelected)} text-center text-xs sm:text-sm`}
-                    >
-                      {getChildCategoryName(item)}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function CategoryPicker({
-  groups,
-  selectedCategory,
-  onSelect,
-}: {
-  groups: CategoryGroup[];
-  selectedCategory: string;
-  onSelect: (category: string) => void;
-}) {
-  const parentGroups = groups.filter((group) => group.label);
-  const standaloneItems = groups
-    .filter((group) => !group.label)
-    .flatMap((group) => group.items);
-
-  const selectedParent =
-    parentGroups.find((group) => group.items.includes(selectedCategory))?.label ??
-    null;
-
-  const [openParent, setOpenParent] = useState<string | null>(selectedParent);
-
-  useEffect(() => {
-    if (selectedParent) {
-      setOpenParent(selectedParent);
-    }
-  }, [selectedParent]);
-
-  const handleToggleParent = (label: string) => {
-    setOpenParent((current) => (current === label ? null : label));
-  };
-
-  return (
-    <div className="space-y-4">
-      {parentGroups.length > 0 && (
-        <div className="space-y-2">
-          {parentGroups.map((group) => (
-            <CategoryGroupDropdown
-              key={group.label}
-              label={group.label!}
-              items={group.items}
-              selectedCategory={selectedCategory}
-              onSelect={onSelect}
-              isOpen={openParent === group.label}
-              onToggle={() => handleToggleParent(group.label!)}
-            />
-          ))}
-        </div>
-      )}
-
-      {standaloneItems.length > 0 && (
-        <div>
-          {parentGroups.length > 0 && (
-            <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-600">
-              General
-            </p>
-          )}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {standaloneItems.map((item) => {
-              const isSelected = selectedCategory === item;
-
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => onSelect(item)}
-                  className={`${categoryChipClass(isSelected)} text-center text-xs sm:text-sm`}
-                >
-                  {item}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function QuickLogNavButton() {
   const { open } = useQuickLog();
@@ -492,7 +318,8 @@ export default function QuickLogFAB({
                     )}
                   </div>
                   <div className="rounded-2xl border border-cardBorder/70 bg-[#0C0C0F]/60 p-3 ring-1 ring-white/[0.02] sm:p-3.5">
-                    <CategoryPicker
+                    <CategoryPickerPanel
+                      mode="single"
                       groups={categoryGroups}
                       selectedCategory={category}
                       onSelect={setCategory}
@@ -512,7 +339,7 @@ export default function QuickLogFAB({
                 )}
               </div>
 
-              <div className="sticky bottom-0 mt-5 shrink-0 bg-card/95 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm lg:bg-transparent lg:pb-0">
+              <div className="sticky bottom-0 -mx-5 mt-5 shrink-0 border-t border-cardBorder/70 bg-card/95 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md lg:-mx-7 lg:px-7 lg:pb-5">
                 <button
                   type="submit"
                   disabled={isSubmitting}

@@ -2,7 +2,12 @@
 
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
-import { Filter, Check, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Filter, Loader2, Pencil, Trash2 } from "lucide-react";
+import {
+  categorySectionLabelClass,
+  CategoryPickerPanel,
+  groupFilterChipClass,
+} from "@/components/CategoryPickerUI";
 import {
   ModalBackdrop,
   ModalFooter,
@@ -23,7 +28,6 @@ import {
   CATEGORY_SEPARATOR,
   getCategoryGroups,
   getChildCategoryName,
-  resolveCategoryHint,
 } from "@/lib/constants";
 import { formatCurrency, formatCurrencyPrecise } from "@/lib/currency";
 import { compareExpensesByRecency } from "@/lib/expenseSort";
@@ -319,6 +323,13 @@ function CategoryFilterModal({
     [categoryNames],
   );
 
+  const draftSummary =
+    draftCategories.length > 0
+      ? `${draftCategories.length} categor${draftCategories.length === 1 ? "y" : "ies"} selected`
+      : draftGroup === "all"
+        ? "All categories"
+        : `${draftGroup} group`;
+
   const modal = (
     <AnimatePresence>
       {isOpen && (
@@ -334,141 +345,90 @@ function CategoryFilterModal({
             aria-modal="true"
             aria-labelledby="category-filter-title"
             {...getModalMotionProps(isDesktop)}
-            className={modalShellClass()}
+            className={modalShellClass("36rem")}
           >
             <ModalHeader onClose={onClose} closeDisabled={isApplying}>
-              <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonViolet/80">
-                Filter expenses
-              </p>
               <h2
                 id="category-filter-title"
-                className="mt-2 text-lg font-semibold text-zinc-100"
+                className="text-lg font-semibold tracking-tight text-zinc-100 lg:text-xl"
               >
-                Category
+                Filter categories
               </h2>
+              <p className="mt-1 text-sm text-zinc-500">{draftSummary}</p>
             </ModalHeader>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-              <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
-                Group
-              </p>
-              <div className="mb-5 flex flex-wrap gap-2">
-                {GROUP_FILTERS.map((filter) => {
-                  const isActive =
-                    draftCategories.length === 0 && draftGroup === filter.id;
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 lg:px-6">
+              <div className="space-y-4 pb-1">
+                <section>
+                  <p className={categorySectionLabelClass}>Quick filters</p>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {GROUP_FILTERS.map((filter) => {
+                      const isActive =
+                        draftCategories.length === 0 && draftGroup === filter.id;
 
-                  return (
-                    <button
-                      key={filter.id}
-                      type="button"
-                      disabled={isApplying}
-                      onClick={() => handleGroupChange(filter.id)}
-                      className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-colors ${
-                        isActive
-                          ? "border-neonViolet bg-neonViolet/15 text-neonViolet"
-                          : "border-cardBorder bg-background text-zinc-400 hover:border-neonViolet/40 hover:text-zinc-200"
-                      }`}
-                    >
-                      {filter.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
-                Specific categories
-                <span className="ml-1 normal-case tracking-normal text-zinc-600">
-                  (select multiple)
-                </span>
-              </p>
-
-              <div className="space-y-4">
-                {categoryGroups.map((group) => (
-                  <div key={group.label ?? group.items[0]}>
-                    {group.label && (
-                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-neonViolet/80">
-                        {group.label}
-                      </p>
-                    )}
-                    <div className="space-y-1">
-                      {group.items.map((name) => {
-                        const isActive = draftCategories.includes(name);
-                        const hint = resolveCategoryHint(name);
-
-                        return (
-                          <button
-                            key={name}
-                            type="button"
-                            disabled={isApplying}
-                            onClick={() => handleCategoryToggle(name)}
-                            className={`flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition-colors ${
-                              isActive
-                                ? "border-neonEmerald/40 bg-neonEmerald/10"
-                                : "border-cardBorder bg-background/60 hover:border-neonViolet/30"
-                            }`}
-                          >
-                            <span
-                              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                                isActive
-                                  ? "border-neonEmerald bg-neonEmerald text-background"
-                                  : "border-cardBorder bg-background"
-                              }`}
-                            >
-                              {isActive && <Check className="h-3.5 w-3.5" />}
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span
-                                className={`block text-sm font-medium ${
-                                  isActive ? "text-neonEmerald" : "text-zinc-200"
-                                }`}
-                              >
-                                {group.label
-                                  ? getChildCategoryName(name)
-                                  : name}
-                              </span>
-                              {hint && (
-                                <span className="mt-0.5 block text-xs text-zinc-500">
-                                  {hint}
-                                </span>
-                              )}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                      return (
+                        <button
+                          key={filter.id}
+                          type="button"
+                          disabled={isApplying}
+                          onClick={() => handleGroupChange(filter.id)}
+                          className={`${groupFilterChipClass(isActive)} disabled:cursor-not-allowed disabled:opacity-60`}
+                        >
+                          {filter.label}
+                        </button>
+                      );
+                    })}
                   </div>
-                ))}
+                </section>
+
+                <section>
+                  <p className={categorySectionLabelClass}>
+                    Specific categories
+                    <span className="ml-1 normal-case tracking-normal text-zinc-600">
+                      (select multiple)
+                    </span>
+                  </p>
+                  <div className="rounded-2xl border border-cardBorder/70 bg-[#0C0C0F]/60 p-3 ring-1 ring-white/[0.02] sm:p-3.5">
+                    <CategoryPickerPanel
+                      mode="multiple"
+                      groups={categoryGroups}
+                      selectedCategories={draftCategories}
+                      onSelect={handleCategoryToggle}
+                      disabled={isApplying}
+                    />
+                  </div>
+                </section>
               </div>
             </div>
 
             <ModalFooter>
-              <div className="flex items-center justify-between gap-3 px-5 lg:px-0">
-              <button
-                type="button"
-                onClick={handleClearFilters}
-                disabled={
-                  isApplying ||
-                  (draftCategories.length === 0 && draftGroup === "all")
-                }
-                className="text-sm text-zinc-500 transition-colors hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Clear all
-              </button>
-              <button
-                type="button"
-                onClick={handleDone}
-                disabled={isApplying}
-                className="inline-flex min-h-11 min-w-[5.5rem] items-center justify-center gap-2 rounded-lg border border-neonViolet/40 bg-neonViolet/15 px-4 py-2.5 text-sm font-medium text-neonViolet transition-colors hover:bg-neonViolet/25 disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-0 lg:py-2"
-              >
-                {isApplying ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Applying
-                  </>
-                ) : (
-                  "Done"
-                )}
-              </button>
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  disabled={
+                    isApplying ||
+                    (draftCategories.length === 0 && draftGroup === "all")
+                  }
+                  className="inline-flex min-h-11 items-center px-1 text-sm text-zinc-500 transition-colors hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Clear all
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDone}
+                  disabled={isApplying}
+                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-neonViolet/40 bg-neonViolet/15 px-5 py-2.5 text-sm font-semibold text-neonViolet transition-colors hover:bg-neonViolet/25 disabled:cursor-not-allowed disabled:opacity-60 sm:max-w-[10rem] sm:flex-none"
+                >
+                  {isApplying ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Applying
+                    </>
+                  ) : (
+                    "Apply"
+                  )}
+                </button>
               </div>
             </ModalFooter>
           </motion.div>
