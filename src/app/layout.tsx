@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import NavigationLoadingProvider from "@/components/NavigationLoadingProvider";
-import PwaInstallPrompt from "@/components/PwaInstallPrompt";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import SupabaseSessionSync from "@/components/SupabaseSessionSync";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/branding";
 import "./globals.css";
@@ -58,7 +58,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <NavigationLoadingProvider>
             <SupabaseSessionSync />
-            <PwaInstallPrompt />
+            <ServiceWorkerRegister />
             {children}
           </NavigationLoadingProvider>
         </Suspense>

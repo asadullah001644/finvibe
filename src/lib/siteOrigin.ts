@@ -33,10 +33,27 @@ function isProductionRuntime(): boolean {
 
 /**
  * Resolves the public site origin for auth email links (signup confirm, password reset).
- * Prefers the incoming request host on production so links match the domain users signed up on.
+ * In production, prefers explicit env / Vercel URLs so emails never embed localhost.
  */
 export async function getSiteOrigin(): Promise<string> {
   const isProduction = isProductionRuntime();
+
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (explicit && !(isProduction && isLocalhostOrigin(normalizeOrigin(explicit)))) {
+    return normalizeOrigin(explicit);
+  }
+
+  if (isProduction) {
+    const productionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+    if (productionUrl) {
+      return normalizeOrigin(productionUrl);
+    }
+
+    const vercelUrl = process.env.VERCEL_URL?.trim();
+    if (vercelUrl) {
+      return normalizeOrigin(vercelUrl);
+    }
+  }
 
   try {
     const headerList = await headers();
@@ -57,20 +74,13 @@ export async function getSiteOrigin(): Promise<string> {
     // headers() is unavailable outside a request (scripts, tests).
   }
 
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (explicit && !(isProduction && isLocalhostOrigin(normalizeOrigin(explicit)))) {
-    return normalizeOrigin(explicit);
+  if (!isProduction) {
+    return "http://localhost:3000";
   }
 
-  const productionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
-  if (productionUrl) {
-    return normalizeOrigin(productionUrl);
-  }
-
-  const vercelUrl = process.env.VERCEL_URL?.trim();
-  if (vercelUrl) {
-    return normalizeOrigin(vercelUrl);
-  }
-
+  console.warn(
+    "getSiteOrigin: production auth links have no public URL configured. " +
+      "Set NEXT_PUBLIC_SITE_URL in Vercel and update Supabase Auth → URL Configuration.",
+  );
   return "http://localhost:3000";
 }
