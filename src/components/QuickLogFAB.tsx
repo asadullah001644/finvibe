@@ -11,7 +11,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, Plus } from "lucide-react";
+import { ChevronDown, Loader2, Plus } from "lucide-react";
 import {
   ModalBackdrop,
   ModalCloseButton,
@@ -21,7 +21,11 @@ import {
 } from "@/components/ui/modal";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { saveExpenseAction } from "@/lib/actions";
-import { getCategoryGroups, resolveCategoryHint } from "@/lib/constants";
+import {
+  getCategoryGroups,
+  getChildCategoryName,
+  resolveCategoryHint,
+} from "@/lib/constants";
 import { getLocalTodayDateString } from "@/lib/expenseDate";
 
 interface QuickLogContextValue {
@@ -41,6 +45,204 @@ export function useQuickLog(): QuickLogContextValue {
 interface QuickLogFABProps {
   customCategories: string[];
   children?: ReactNode;
+}
+
+type CategoryGroup = ReturnType<typeof getCategoryGroups>[number];
+
+const fieldLabelClass =
+  "mb-2 block text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500";
+
+const fieldLabelInlineClass =
+  "text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500";
+
+const fieldShellClass =
+  "flex h-11 w-full items-center rounded-xl border border-cardBorder/70 bg-[#0C0C0F]/60 px-3.5 ring-1 ring-white/[0.02] transition-colors focus-within:border-neonViolet/50 focus-within:ring-neonViolet/20";
+
+const fieldInputClass =
+  "w-full min-w-0 border-0 bg-transparent text-sm text-zinc-100 outline-none placeholder:text-zinc-600";
+
+const standaloneFieldClass =
+  "h-11 w-full rounded-xl border border-cardBorder/70 bg-[#0C0C0F]/60 px-3.5 text-sm text-zinc-100 outline-none ring-1 ring-white/[0.02] transition-colors placeholder:text-zinc-600 focus:border-neonViolet/50 focus:ring-neonViolet/20";
+
+function categoryChipClass(isSelected: boolean): string {
+  return [
+    "min-h-11 rounded-xl border px-3 py-2.5 text-sm font-medium transition-all duration-150",
+    isSelected
+      ? "border-neonViolet/70 bg-neonViolet/15 text-neonViolet shadow-[inset_0_0_0_1px_rgba(139,92,246,0.25),0_0_16px_rgba(139,92,246,0.1)]"
+      : "border-cardBorder/80 bg-background/50 text-zinc-300 hover:border-neonViolet/35 hover:bg-card/80",
+  ].join(" ");
+}
+
+function formatSelectedCategoryLabel(category: string): string {
+  const parts = category.split(" › ");
+  if (parts.length <= 1) {
+    return category;
+  }
+
+  return `${parts[0]} · ${parts.slice(1).join(" · ")}`;
+}
+
+function CategoryGroupDropdown({
+  label,
+  items,
+  selectedCategory,
+  onSelect,
+  isOpen,
+  onToggle,
+}: {
+  label: string;
+  items: string[];
+  selectedCategory: string;
+  onSelect: (category: string) => void;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const hasSelection = items.includes(selectedCategory);
+
+  return (
+    <div
+      className={`overflow-hidden rounded-xl border transition-colors ${
+        hasSelection
+          ? "border-neonViolet/40 bg-neonViolet/[0.06]"
+          : "border-cardBorder/80 bg-background/40"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-white/[0.02]"
+      >
+        <span className="flex min-w-0 items-center gap-2.5">
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform duration-200 ${
+              isOpen ? "rotate-0" : "-rotate-90"
+            }`}
+          />
+          <span
+            className={`text-sm font-semibold ${
+              hasSelection ? "text-neonViolet" : "text-zinc-200"
+            }`}
+          >
+            {label}
+          </span>
+        </span>
+        {hasSelection && (
+          <span className="truncate rounded-full border border-neonViolet/25 bg-neonViolet/10 px-2.5 py-0.5 text-xs font-medium text-neonViolet">
+            {getChildCategoryName(selectedCategory)}
+          </span>
+        )}
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-cardBorder/60 px-3 pb-3 pt-2.5">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {items.map((item) => {
+                  const isSelected = selectedCategory === item;
+
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => onSelect(item)}
+                      className={`${categoryChipClass(isSelected)} text-center text-xs sm:text-sm`}
+                    >
+                      {getChildCategoryName(item)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function CategoryPicker({
+  groups,
+  selectedCategory,
+  onSelect,
+}: {
+  groups: CategoryGroup[];
+  selectedCategory: string;
+  onSelect: (category: string) => void;
+}) {
+  const parentGroups = groups.filter((group) => group.label);
+  const standaloneItems = groups
+    .filter((group) => !group.label)
+    .flatMap((group) => group.items);
+
+  const selectedParent =
+    parentGroups.find((group) => group.items.includes(selectedCategory))?.label ??
+    null;
+
+  const [openParent, setOpenParent] = useState<string | null>(selectedParent);
+
+  useEffect(() => {
+    if (selectedParent) {
+      setOpenParent(selectedParent);
+    }
+  }, [selectedParent]);
+
+  const handleToggleParent = (label: string) => {
+    setOpenParent((current) => (current === label ? null : label));
+  };
+
+  return (
+    <div className="space-y-4">
+      {parentGroups.length > 0 && (
+        <div className="space-y-2">
+          {parentGroups.map((group) => (
+            <CategoryGroupDropdown
+              key={group.label}
+              label={group.label!}
+              items={group.items}
+              selectedCategory={selectedCategory}
+              onSelect={onSelect}
+              isOpen={openParent === group.label}
+              onToggle={() => handleToggleParent(group.label!)}
+            />
+          ))}
+        </div>
+      )}
+
+      {standaloneItems.length > 0 && (
+        <div>
+          {parentGroups.length > 0 && (
+            <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-600">
+              General
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {standaloneItems.map((item) => {
+              const isSelected = selectedCategory === item;
+
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => onSelect(item)}
+                  className={`${categoryChipClass(isSelected)} text-center text-xs sm:text-sm`}
+                >
+                  {item}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function QuickLogNavButton() {
@@ -209,26 +411,16 @@ export default function QuickLogFAB({
             {...getModalMotionProps(isDesktop)}
             className="fixed z-[201] flex max-h-[min(92vh,720px)] flex-col overflow-hidden border border-cardBorder bg-card shadow-[0_-16px_48px_rgba(0,0,0,0.45)] inset-x-0 bottom-0 rounded-t-[1.75rem] lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-1/2 lg:max-h-[min(calc(100vh-3rem),680px)] lg:w-[min(calc(100vw-3rem),34rem)] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl lg:border-cardBorder/80 lg:bg-[#111114] lg:shadow-[0_28px_80px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.04)]"
           >
-            <div className="pointer-events-none absolute inset-x-0 top-0 hidden h-36 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_72%)] lg:block" />
-
-            <div className="relative shrink-0 border-b border-cardBorder/80 px-5 pb-4 pt-4 lg:px-7 lg:pb-5 lg:pt-6">
+            <div className="relative shrink-0 border-b border-cardBorder/80 px-5 pb-3 pt-4 lg:px-7 lg:pb-4 lg:pt-5">
               <ModalDragHandle />
 
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-neonEmerald/75 lg:text-xs">
-                    Add Expense
-                  </p>
-                  <h2
-                    id="add-expense-title"
-                    className="mt-2 text-xl font-semibold tracking-tight text-zinc-100 lg:mt-2.5 lg:text-2xl"
-                  >
-                    Record a transaction
-                  </h2>
-                  <p className="mt-1.5 text-sm leading-relaxed text-zinc-500 lg:max-w-[22rem]">
-                    Enter amount and category — it&apos;s added to this month&apos;s ledger.
-                  </p>
-                </div>
+              <div className="flex items-center justify-between gap-4">
+                <h2
+                  id="add-expense-title"
+                  className="text-lg font-semibold tracking-tight text-zinc-100 lg:text-xl"
+                >
+                  Add expense
+                </h2>
 
                 <ModalCloseButton onClick={closeSheet} accent="violet" />
               </div>
@@ -236,16 +428,16 @@ export default function QuickLogFAB({
 
             <form
               onSubmit={handleSubmit}
-              className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5 lg:px-7 lg:py-6"
+              className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-4 lg:px-7 lg:py-5"
             >
-              <div className="space-y-6">
-                <label className="block">
-                  <span className="mb-2.5 block text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                    Amount
-                  </span>
-                  <div className="overflow-hidden rounded-2xl border border-cardBorder/80 bg-background/70 ring-1 ring-white/[0.03] transition-colors focus-within:border-neonViolet/60 focus-within:ring-neonViolet/20 lg:bg-gradient-to-br lg:from-[#0C0C0F] lg:to-card/50">
-                    <div className="flex items-center gap-3 px-4 py-1 lg:px-5 lg:py-2">
-                      <span className="shrink-0 text-sm font-medium text-zinc-500">PKR</span>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_9.5rem] sm:items-end">
+                  <label className="block min-w-0">
+                    <span className={fieldLabelClass}>Amount</span>
+                    <div className={fieldShellClass}>
+                      <span className="mr-2 shrink-0 text-sm font-medium text-zinc-500">
+                        PKR
+                      </span>
                       <input
                         ref={amountRef}
                         type="text"
@@ -254,94 +446,63 @@ export default function QuickLogFAB({
                         placeholder="0"
                         value={amount}
                         onChange={handleAmountChange}
-                        className="no-number-spinner w-full min-w-0 border-0 bg-transparent py-3 text-3xl font-semibold tabular-nums tracking-tight text-zinc-100 outline-none placeholder:text-zinc-600 lg:py-3.5 lg:text-[2rem]"
+                        className={`no-number-spinner ${fieldInputClass} font-semibold tabular-nums`}
                       />
                     </div>
-                  </div>
+                  </label>
+
+                  <label className="block min-w-0">
+                    <span className={fieldLabelClass}>Date</span>
+                    <div className={fieldShellClass}>
+                      <input
+                        type="date"
+                        value={date}
+                        onChange={(event) => setDate(event.target.value)}
+                        className={`${fieldInputClass} [color-scheme:dark]`}
+                      />
+                    </div>
+                  </label>
+                </div>
+
+                <label className="block">
+                  <span className={fieldLabelClass}>
+                    Note{" "}
+                    <span className="font-normal normal-case tracking-normal text-zinc-600">
+                      (optional)
+                    </span>
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="What was this for?"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    className={standaloneFieldClass}
+                  />
                 </label>
 
                 <div>
-                  <div className="mb-2.5 flex items-center justify-between gap-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className={fieldLabelInlineClass}>
                       Category
                     </p>
                     {category && (
-                      <span className="truncate text-xs text-neonViolet/90">
-                        {category.split(" › ").slice(-1)[0]}
+                      <span className="truncate rounded-full border border-neonViolet/25 bg-neonViolet/10 px-2.5 py-0.5 text-xs font-medium text-neonViolet">
+                        {formatSelectedCategoryLabel(category)}
                       </span>
                     )}
                   </div>
-                  <div className="max-h-44 overflow-y-auto rounded-2xl border border-cardBorder/70 bg-[#0C0C0F]/80 p-3 ring-1 ring-white/[0.02] lg:max-h-56">
-                    <div className="space-y-4">
-                      {categoryGroups.map((group) => (
-                        <div key={group.label ?? group.items[0]}>
-                          {group.label && (
-                            <p className="sticky top-0 z-10 mb-2.5 bg-[#0C0C0F]/95 px-0.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-neonViolet/75">
-                              {group.label}
-                            </p>
-                          )}
-                          <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
-                            {group.items.map((item) => {
-                              const isSelected = category === item;
-                              const displayName = group.label
-                                ? item.split(" › ").slice(1).join(" › ")
-                                : item;
-
-                              return (
-                                <button
-                                  key={item}
-                                  type="button"
-                                  onClick={() => setCategory(item)}
-                                  className={`min-h-10 rounded-xl border px-3 py-2.5 text-left text-xs font-medium transition-all duration-150 lg:text-[13px] ${
-                                    isSelected
-                                      ? "border-neonViolet/70 bg-neonViolet/15 text-neonViolet shadow-[inset_0_0_0_1px_rgba(139,92,246,0.25),0_0_20px_rgba(139,92,246,0.12)]"
-                                      : "border-cardBorder/80 bg-card/50 text-zinc-300 hover:border-neonViolet/35 hover:bg-card"
-                                  }`}
-                                >
-                                  {displayName}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="rounded-2xl border border-cardBorder/70 bg-[#0C0C0F]/60 p-3 ring-1 ring-white/[0.02] sm:p-3.5">
+                    <CategoryPicker
+                      groups={categoryGroups}
+                      selectedCategory={category}
+                      onSelect={setCategory}
+                    />
                   </div>
                   {category && resolveCategoryHint(category) && (
-                    <p className="mt-2.5 text-xs leading-relaxed text-zinc-500">
+                    <p className="mt-2 text-xs leading-relaxed text-zinc-500">
                       {resolveCategoryHint(category)}
                     </p>
                   )}
-                </div>
-
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <label className="block lg:col-span-2">
-                    <span className="mb-2.5 block text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                      Description{" "}
-                      <span className="font-normal normal-case tracking-normal text-zinc-600">
-                        (optional)
-                      </span>
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="What was this for?"
-                      value={description}
-                      onChange={(event) => setDescription(event.target.value)}
-                      className="w-full rounded-xl border border-cardBorder/80 bg-background/70 px-4 py-3 text-sm text-zinc-100 outline-none ring-1 ring-white/[0.03] transition-colors placeholder:text-zinc-600 focus:border-neonViolet/60 focus:ring-neonViolet/20"
-                    />
-                  </label>
-
-                  <label className="block lg:col-span-2">
-                    <span className="mb-2.5 block text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                      Date
-                    </span>
-                    <input
-                      type="date"
-                      value={date}
-                      onChange={(event) => setDate(event.target.value)}
-                      className="w-full rounded-xl border border-cardBorder/80 bg-background/70 px-4 py-3 text-sm text-zinc-100 outline-none ring-1 ring-white/[0.03] transition-colors focus:border-neonViolet/60 focus:ring-neonViolet/20 [color-scheme:dark] lg:max-w-[14rem]"
-                    />
-                  </label>
                 </div>
 
                 {error && (
@@ -351,11 +512,11 @@ export default function QuickLogFAB({
                 )}
               </div>
 
-              <div className="sticky bottom-0 mt-6 shrink-0 border-t border-cardBorder/70 bg-card/95 pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm lg:mt-7 lg:border-t lg:border-cardBorder/60 lg:bg-transparent lg:pb-0 lg:pt-5 lg:backdrop-blur-none">
+              <div className="sticky bottom-0 mt-5 shrink-0 bg-card/95 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm lg:bg-transparent lg:pb-0">
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-neonEmerald px-4 py-3.5 text-sm font-semibold text-[#041510] shadow-[0_10px_28px_rgba(16,185,129,0.28)] transition-all hover:bg-[#0ea271] hover:shadow-[0_12px_32px_rgba(16,185,129,0.34)] disabled:cursor-not-allowed disabled:opacity-50 lg:py-3.5"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-neonEmerald px-4 py-3 text-sm font-semibold text-[#041510] shadow-[0_8px_24px_rgba(16,185,129,0.25)] transition-all hover:bg-[#0ea271] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
