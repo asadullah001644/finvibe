@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Calendar, Loader2, Settings, Shield } from "lucide-react";
+import { APP_TAB_ICONS } from "@/components/AppNavIcons";
 import BudgetToolButtons from "@/components/BudgetToolButtons";
 import InstallAppButton from "@/components/InstallAppButton";
 import LockButton from "@/components/LockButton";
@@ -13,7 +15,13 @@ import AppLogo from "@/components/AppLogo";
 import { ModalBackdrop, ModalCloseButton } from "@/components/ui/modal";
 import type { ModalAction } from "@/lib/modalActions";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
+import {
+  APP_TABS,
+  buildMonthUrl,
+  getActiveTabFromPathname,
+} from "@/lib/navigation";
 import { resolveDisplayInitial } from "@/lib/profileDisplay";
+import { resolveMonthKey } from "@/lib/month";
 
 interface AppMobileDrawerProps {
   isOpen: boolean;
@@ -50,7 +58,11 @@ export default function AppMobileDrawer({
   pendingModalAction = null,
   onMonthChange,
 }: AppMobileDrawerProps) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { navigate, pendingHref } = useAppNavigation();
+  const activeTab = getActiveTabFromPathname(pathname);
+  const currentMonthKeyFromUrl = resolveMonthKey(searchParams.get("month") ?? undefined);
   const [mounted, setMounted] = useState(false);
   const monthInputRef = useRef<HTMLInputElement>(null);
   const initial = resolveDisplayInitial(userDisplayName);
@@ -161,6 +173,53 @@ export default function AppMobileDrawer({
                   <span className="text-neonViolet">{carriedFromMonthLabel}</span>
                 </p>
               )}
+
+              <nav aria-label="Main navigation" className="mt-6">
+                <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">
+                  Navigation
+                </p>
+                <div className="space-y-1">
+                  {APP_TABS.map((tab) => {
+                    const Icon = APP_TAB_ICONS[tab.id];
+                    const href = buildMonthUrl(tab.href, currentMonthKeyFromUrl);
+                    const isActive = activeTab === tab.id;
+                    const isPending = pendingHref === href;
+
+                    return (
+                      <Link
+                        key={tab.id}
+                        href={href}
+                        prefetch={false}
+                        data-app-nav="manual"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          onClose();
+                          navigate(href);
+                        }}
+                        aria-busy={isPending}
+                        aria-current={isActive ? "page" : undefined}
+                        className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
+                          isActive
+                            ? "border border-neonViolet/30 bg-neonViolet/10 text-neonViolet"
+                            : isPending
+                              ? "border border-neonViolet/20 bg-neonViolet/5 text-neonViolet/80"
+                              : "text-zinc-300 hover:bg-card/60 hover:text-zinc-100"
+                        } ${isPending ? "pointer-events-none" : ""}`}
+                      >
+                        {isPending ? (
+                          <Loader2 className="h-5 w-5 shrink-0 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Icon
+                            className={`h-5 w-5 shrink-0 ${isActive ? "text-neonViolet" : "text-zinc-400"}`}
+                            strokeWidth={isActive ? 2.25 : 2}
+                          />
+                        )}
+                        {tab.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </nav>
 
               <div className="mt-6">
                 <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">

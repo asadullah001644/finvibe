@@ -15,6 +15,7 @@ import {
 import AppBottomNav from "@/components/AppBottomNav";
 import AppDesktopSidebar from "@/components/AppDesktopSidebar";
 import AppHeader from "@/components/AppHeader";
+import AppMobilePageHeading from "@/components/AppMobilePageHeading";
 import CarryForwardNotice from "@/components/CarryForwardNotice";
 import ContentLoadingOverlay from "@/components/ContentLoadingOverlay";
 import ContentSubtleRefresh from "@/components/ContentSubtleRefresh";
@@ -239,10 +240,16 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
               />
             )}
 
+            {shellReady && monthData && (
+              <AppMobilePageHeading
+                carriedFromMonthLabel={monthData.carriedFromMonthLabel}
+              />
+            )}
+
             <div
               className={
                 shellReady
-                  ? "relative mx-auto max-w-[1600px] space-y-6 px-4 py-6 pb-24 lg:px-8 lg:py-8 lg:pb-10"
+                  ? "relative mx-auto max-w-[1600px] space-y-6 px-4 pb-24 pt-4 lg:px-8 lg:py-8 lg:pb-10"
                   : undefined
               }
             >

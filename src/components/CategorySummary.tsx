@@ -5,7 +5,8 @@ import { AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
 import { useAppShellActions } from "@/components/AppShellProvider";
 import { formatCurrency } from "@/lib/currency";
 import {
-  formatShareOfMonthLabel,
+  formatCategoryRowCaption,
+  getCategoryBarFillPercent,
   getOverviewCategoryHighlights,
   type CategoryExpense,
 } from "@/lib/categorySpend";
@@ -34,9 +35,9 @@ function SummaryRow({
   };
   monthKey: string;
 }) {
-  const fillPercent = Math.min(row.shareOfMonth, 100);
-  const limitPercent =
-    row.allocated > 0 ? Math.round((row.spent / row.allocated) * 100) : null;
+  const fillPercent = getCategoryBarFillPercent(row);
+  const caption = formatCategoryRowCaption(row);
+  const hasLimit = row.allocated > 0;
 
   return (
     <li>
@@ -59,6 +60,12 @@ function SummaryRow({
             }`}
           >
             {formatCurrency(row.spent)}
+            {hasLimit && (
+              <span className="font-normal text-zinc-500">
+                {" "}
+                / {formatCurrency(row.allocated)}
+              </span>
+            )}
           </span>
         </div>
 
@@ -71,12 +78,14 @@ function SummaryRow({
           />
         </div>
 
-        <p className="mt-1 text-xs text-zinc-500">
-          {formatShareOfMonthLabel(row.shareOfMonth)}
-          {limitPercent !== null && (
-            <span className={row.isOver ? " text-neonCrimson" : ""}>
+        <p className="mt-1 text-xs">
+          <span className={caption.isOver ? "font-medium text-neonCrimson" : "text-zinc-400"}>
+            {caption.primary}
+          </span>
+          {caption.secondary && (
+            <span className="text-zinc-500">
               {" "}
-              · {limitPercent}% of category limit
+              · {caption.secondary}
             </span>
           )}
         </p>

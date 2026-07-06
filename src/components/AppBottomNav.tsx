@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Calendar, LayoutDashboard, Loader2, Sparkles, Tags } from "lucide-react";
+import { Calendar, Loader2, Settings, Shield, type LucideIcon } from "lucide-react";
+import { APP_TAB_ICONS } from "@/components/AppNavIcons";
 import { QuickLogNavButton } from "@/components/QuickLogFAB";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import {
@@ -12,18 +13,11 @@ import {
 } from "@/lib/navigation";
 import { resolveMonthKey } from "@/lib/month";
 
-const TAB_ICONS = {
-  overview: LayoutDashboard,
-  categories: Tags,
-  calendar: Calendar,
-  insights: Sparkles,
-} as const;
-
 interface NavTabLinkProps {
   href: string;
   isActive: boolean;
   label: string;
-  icon: typeof LayoutDashboard;
+  icon: LucideIcon;
 }
 
 function NavTabLink({ href, isActive, label, icon: Icon }: NavTabLinkProps) {
@@ -79,7 +73,7 @@ export default function AppBottomNav() {
             href={buildMonthUrl(tab.href, currentMonthKey)}
             isActive={activeTab === tab.id}
             label={tab.label}
-            icon={TAB_ICONS[tab.id]}
+            icon={APP_TAB_ICONS[tab.id]}
           />
         ))}
 
@@ -93,7 +87,7 @@ export default function AppBottomNav() {
             href={buildMonthUrl(tab.href, currentMonthKey)}
             isActive={activeTab === tab.id}
             label={tab.label}
-            icon={TAB_ICONS[tab.id]}
+            icon={APP_TAB_ICONS[tab.id]}
           />
         ))}
       </div>

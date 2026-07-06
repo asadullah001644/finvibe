@@ -4,14 +4,12 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   Calendar,
-  LayoutDashboard,
   Loader2,
   Settings,
   Shield,
-  Sparkles,
-  Tags,
 } from "lucide-react";
 import AppLogo from "@/components/AppLogo";
+import { APP_TAB_ICONS } from "@/components/AppNavIcons";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import {
   APP_TABS,
@@ -20,13 +18,6 @@ import {
 } from "@/lib/navigation";
 import { resolveDisplayInitial } from "@/lib/profileDisplay";
 import { resolveMonthKey } from "@/lib/month";
-
-const TAB_ICONS = {
-  overview: LayoutDashboard,
-  categories: Tags,
-  calendar: Calendar,
-  insights: Sparkles,
-} as const;
 
 interface AppDesktopSidebarProps {
   userDisplayName: string;
@@ -70,7 +61,7 @@ export default function AppDesktopSidebar({
           className="mt-8 min-h-0 flex-1 space-y-1 overflow-y-auto"
         >
           {APP_TABS.map((tab) => {
-            const Icon = TAB_ICONS[tab.id];
+            const Icon = APP_TAB_ICONS[tab.id];
             const href = buildMonthUrl(tab.href, currentMonthKey);
             const isActive = activeTab === tab.id;
             const isPending = pendingHref === href;

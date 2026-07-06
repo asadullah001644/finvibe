@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type RefObject } from "react";
-import { Calendar, PanelLeft } from "lucide-react";
+import { Calendar, Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
 import AppMobileDrawer from "@/components/AppMobileDrawer";
 import BudgetToolButtons from "@/components/BudgetToolButtons";
@@ -13,6 +13,7 @@ import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { useAppShellActions } from "@/components/AppShellProvider";
 import RecurringExpensesSettings from "@/components/RecurringExpensesSettings";
 import { APP_TABS, buildMonthUrl, getActiveTabFromPathname } from "@/lib/navigation";
+import { APP_NAME } from "@/lib/branding";
 import type { BudgetCategory } from "@/lib/types";
 
 interface AppHeaderProps {
@@ -166,25 +167,18 @@ export default function AppHeader({
         showTrigger={false}
       />
 
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-3 px-4 py-4 lg:gap-4 lg:px-8 lg:py-5">
-        <div className="flex items-center gap-3 lg:hidden">
+      <div className="mx-auto flex max-w-[1600px] flex-col gap-3 px-4 py-3 lg:gap-4 lg:px-8 lg:py-5">
+        <div className="relative flex h-11 items-center justify-center lg:hidden">
           <button
             type="button"
-            aria-label="Open menu"
+            aria-label="Open sidebar menu"
             aria-expanded={drawerOpen}
             onClick={() => setDrawerOpen(true)}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cardBorder bg-card text-zinc-300 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
+            className="absolute left-0 flex h-11 w-11 items-center justify-center rounded-xl border border-cardBorder bg-card text-zinc-300 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
           >
-            <PanelLeft className="h-5 w-5" />
+            <Menu className="h-5 w-5" />
           </button>
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-xl font-semibold text-zinc-100">{pageTitle}</h1>
-            {carriedFromMonthLabel && (
-              <p className="mt-0.5 truncate text-xs text-zinc-500">
-                Carry-forward from {carriedFromMonthLabel}
-              </p>
-            )}
-          </div>
+          <p className="text-sm font-semibold tracking-[0.08em] text-zinc-100">{APP_NAME}</p>
         </div>
 
         <div className="hidden flex-col gap-3 lg:flex xl:flex-row xl:items-center xl:justify-between">

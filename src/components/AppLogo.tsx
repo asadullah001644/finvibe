@@ -9,12 +9,14 @@ const SIZE_MAP = {
 
 interface AppLogoProps {
   showText?: boolean;
+  compact?: boolean;
   size?: keyof typeof SIZE_MAP;
   className?: string;
 }
 
 export default function AppLogo({
   showText = false,
+  compact = false,
   size = "md",
   className = "",
 }: AppLogoProps) {
@@ -35,9 +37,11 @@ export default function AppLogo({
           <p className="truncate text-sm font-semibold tracking-[0.08em] text-zinc-100">
             {APP_NAME}
           </p>
-          <p className="truncate text-[11px] uppercase tracking-[0.2em] text-zinc-500">
-            {APP_TAGLINE_SHORT}
-          </p>
+          {!compact && (
+            <p className="truncate text-[11px] uppercase tracking-[0.2em] text-zinc-500">
+              {APP_TAGLINE_SHORT}
+            </p>
+          )}
         </div>
       )}
     </div>

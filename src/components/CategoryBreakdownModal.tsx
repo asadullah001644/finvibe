@@ -16,10 +16,12 @@ import {
   buildGroupedCategoryRows,
   countActiveCategories,
   filterCategoryGroups,
-  formatShareOfMonthLabel,
+  formatCategoryRowCaption,
+  getCategoryBarFillPercent,
   type CategoryExpense,
   type CategoryGroupRow,
   type CategoryRow,
+  type CategoryRowCaption,
 } from "@/lib/categorySpend";
 import { formatCurrency } from "@/lib/currency";
 import type { BudgetCategory } from "@/lib/types";
@@ -33,21 +35,12 @@ interface CategoryBreakdownModalProps {
   onCategorySelect?: (categoryName: string) => void;
 }
 
-function rowSubtext(row: CategoryRow): string | null {
+function rowSubtext(row: CategoryRow): CategoryRowCaption | null {
   if (row.spent <= 0) {
     return null;
   }
 
-  const parts = [formatShareOfMonthLabel(row.shareOfMonth)];
-
-  if (row.allocated > 0 && row.percent !== null) {
-    parts.push(`${row.percent}% of category limit`);
-    if (row.isOver) {
-      parts.push(`${formatCurrency(row.spent - row.allocated)} over`);
-    }
-  }
-
-  return parts.join(" · ");
+  return formatCategoryRowCaption(row);
 }
 
 function BreakdownRow({
@@ -57,9 +50,8 @@ function BreakdownRow({
   row: CategoryRow;
   onCategorySelect?: (categoryName: string) => void;
 }) {
-  const fillPercent = Math.min(row.shareOfMonth, 100);
-
-  const subtext = rowSubtext(row);
+  const fillPercent = getCategoryBarFillPercent(row);
+  const caption = rowSubtext(row);
 
   return (
     <li className={row.isChild ? "ml-3 border-l border-cardBorder pl-3" : ""}>
@@ -108,13 +100,18 @@ function BreakdownRow({
         </div>
       )}
 
-      {subtext && (
-        <p
-          className={`mt-1 text-sm ${
-            row.isOver ? "text-neonCrimson/90" : "text-zinc-400"
-          }`}
-        >
-          {subtext}
+      {caption && (
+        <p className="mt-1 text-sm">
+          <span
+            className={
+              caption.isOver ? "font-medium text-neonCrimson" : "text-zinc-400"
+            }
+          >
+            {caption.primary}
+          </span>
+          {caption.secondary && (
+            <span className="text-zinc-500"> · {caption.secondary}</span>
+          )}
         </p>
       )}
     </li>

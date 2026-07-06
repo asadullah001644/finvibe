@@ -2,6 +2,7 @@ import {
   getCategoryGroups,
   getChildCategoryName,
 } from "@/lib/constants";
+import { formatCurrency } from "@/lib/currency";
 import type { BudgetCategory } from "@/lib/types";
 
 export interface CategoryExpense {
@@ -32,6 +33,52 @@ export function sumExpenses(expenses: CategoryExpense[]): number {
 
 export function formatShareOfMonthLabel(shareOfMonth: number): string {
   return `${shareOfMonth}% of total spending`;
+}
+
+export interface CategoryRowCaption {
+  primary: string;
+  secondary?: string;
+  isOver: boolean;
+}
+
+export function getCategoryBarFillPercent(row: {
+  spent: number;
+  allocated: number;
+  shareOfMonth: number;
+}): number {
+  if (row.allocated > 0) {
+    return Math.min((row.spent / row.allocated) * 100, 100);
+  }
+
+  return Math.min(row.shareOfMonth, 100);
+}
+
+export function formatCategoryRowCaption(row: {
+  spent: number;
+  allocated: number;
+  shareOfMonth: number;
+  isOver: boolean;
+}): CategoryRowCaption {
+  if (row.allocated > 0) {
+    if (row.isOver) {
+      return {
+        primary: `${formatCurrency(row.spent - row.allocated)} over limit`,
+        secondary: `${formatCurrency(row.spent)} spent · ${formatCurrency(row.allocated)} limit`,
+        isOver: true,
+      };
+    }
+
+    return {
+      primary: `${formatCurrency(row.spent)} of ${formatCurrency(row.allocated)} limit`,
+      secondary: formatShareOfMonthLabel(row.shareOfMonth),
+      isOver: false,
+    };
+  }
+
+  return {
+    primary: formatShareOfMonthLabel(row.shareOfMonth),
+    isOver: false,
+  };
 }
 
 function buildCategoryRow(
