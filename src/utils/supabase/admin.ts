@@ -19,7 +19,7 @@ export async function createAdminClient() {
 
   if (!serviceKey) {
     throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY is required for admin operations. Add it to .env.local (server-only).",
+      "SUPABASE_SERVICE_ROLE_KEY is required for admin operations. Add it in Supabase → Project Settings → API → service_role, then set it in .env.local (local) or Vercel → Environment Variables (production). Never expose this key in the browser.",
     );
   }
 
