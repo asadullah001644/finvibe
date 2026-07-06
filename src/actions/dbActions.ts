@@ -497,12 +497,19 @@ export async function deleteExpense(id: string) {
 
 export async function getExpenses(): Promise<SerializedExpense[]> {
   const supabase = await createClient();
+  const user = await getSessionUser();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("expenses")
     .select("*")
     .order("date", { ascending: false })
     .order("created_at", { ascending: false });
+
+  if (user?.id) {
+    query = query.eq("user_id", user.id);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching expenses:", error);
@@ -512,7 +519,10 @@ export async function getExpenses(): Promise<SerializedExpense[]> {
   return (data as ExpenseRow[]).map(mapExpenseRow);
 }
 
-async function fetchExpensesForMonth(monthKey: string): Promise<SerializedExpense[]> {
+async function fetchExpensesForMonth(
+  monthKey: string,
+  userId?: string | null,
+): Promise<SerializedExpense[]> {
   const range = getMonthDateRange(monthKey);
 
   if (!range) {
@@ -521,13 +531,19 @@ async function fetchExpensesForMonth(monthKey: string): Promise<SerializedExpens
 
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("expenses")
     .select(EXPENSE_COLUMNS)
     .gte("date", range.start)
     .lte("date", range.end)
     .order("date", { ascending: false })
     .order("created_at", { ascending: false });
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching month expenses:", error);
@@ -547,7 +563,7 @@ export async function getExpensesForMonth(
   }
 
   return unstable_cache(
-    () => fetchExpensesForMonth(monthKey),
+    () => fetchExpensesForMonth(monthKey, user.id),
     ["expenses", user.id, monthKey],
     {
       revalidate: 30,
@@ -558,11 +574,18 @@ export async function getExpensesForMonth(
 
 export async function getRecurringExpenses(): Promise<RecurringExpense[]> {
   const supabase = await createClient();
+  const user = await getSessionUser();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("recurring_expenses")
     .select("*")
     .order("created_at", { ascending: true });
+
+  if (user?.id) {
+    query = query.eq("user_id", user.id);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     if (isRecurringSchemaUnavailableError(error)) {
@@ -675,11 +698,18 @@ export async function seedRecurringExpensesForMonth(
   }
 
   const supabase = await createClient();
+  const user = await getSessionUser();
 
-  const { count: activeRecurringCount, error: countError } = await supabase
+  let countQuery = supabase
     .from("recurring_expenses")
     .select("id", { count: "exact", head: true })
     .eq("is_active", true);
+
+  if (user?.id) {
+    countQuery = countQuery.eq("user_id", user.id);
+  }
+
+  const { count: activeRecurringCount, error: countError } = await countQuery;
 
   if (countError) {
     if (isRecurringSchemaUnavailableError(countError)) {
@@ -693,17 +723,26 @@ export async function seedRecurringExpensesForMonth(
     return;
   }
 
+  let recurringQuery = supabase
+    .from("recurring_expenses")
+    .select(RECURRING_SEED_COLUMNS)
+    .eq("is_active", true);
+
+  let seededQuery = supabase
+    .from("expenses")
+    .select("recurring_expense_id")
+    .gte("date", range.start)
+    .lte("date", range.end)
+    .not("recurring_expense_id", "is", null);
+
+  if (user?.id) {
+    recurringQuery = recurringQuery.eq("user_id", user.id);
+    seededQuery = seededQuery.eq("user_id", user.id);
+  }
+
   const [recurringResult, seededResult] = await Promise.all([
-    supabase
-      .from("recurring_expenses")
-      .select(RECURRING_SEED_COLUMNS)
-      .eq("is_active", true),
-    supabase
-      .from("expenses")
-      .select("recurring_expense_id")
-      .gte("date", range.start)
-      .lte("date", range.end)
-      .not("recurring_expense_id", "is", null),
+    recurringQuery,
+    seededQuery,
   ]);
 
   if (recurringResult.error) {
