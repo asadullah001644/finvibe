@@ -3,7 +3,14 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Repeat, Trash2, X } from "lucide-react";
+import { Plus, Repeat, Trash2 } from "lucide-react";
+import {
+  ModalBackdrop,
+  ModalHeader,
+  getModalMotionProps,
+  modalShellClass,
+  useIsDesktop,
+} from "@/components/ui/modal";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import {
   deleteRecurringExpenseAction,
@@ -50,6 +57,7 @@ export default function RecurringExpensesSettings({
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isDesktop = useIsDesktop();
 
   const categoryGroups = getCategoryGroups();
 
@@ -173,53 +181,34 @@ export default function RecurringExpensesSettings({
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.button
-            type="button"
-            aria-label="Close recurring expenses"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md"
+          <ModalBackdrop
+            onClose={() => setOpen(false)}
+            label="Close recurring expenses"
           />
 
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-labelledby="recurring-expenses-title"
-            initial={{ opacity: 0, scale: 0.95, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 16 }}
-            className="fixed left-1/2 top-1/2 z-[201] flex max-h-[min(90vh,720px)] w-[min(calc(100vw-2rem),32rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-cardBorder bg-card shadow-[0_0_60px_rgba(139,92,246,0.2)]"
+            {...getModalMotionProps(isDesktop)}
+            className={modalShellClass("32rem")}
           >
-            <div className="shrink-0 border-b border-cardBorder px-6 py-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonViolet/80">
-                    Monthly Templates
-                  </p>
-                  <h2
-                    id="recurring-expenses-title"
-                    className="mt-2 text-lg font-semibold text-zinc-100"
-                  >
-                    Recurring Expenses
-                  </h2>
-                  <p className="mt-1 text-sm text-zinc-500">
-                    Active items auto-seed on the 1st of each new month.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  onClick={() => setOpen(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-cardBorder bg-background text-zinc-400 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            <ModalHeader onClose={() => setOpen(false)}>
+              <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonViolet/80">
+                Monthly Templates
+              </p>
+              <h2
+                id="recurring-expenses-title"
+                className="mt-2 text-lg font-semibold text-zinc-100"
+              >
+                Recurring Expenses
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Active items auto-seed on the 1st of each new month.
+              </p>
+            </ModalHeader>
 
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-5">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5 lg:px-6">
               <form onSubmit={handleSubmit} className="space-y-4 border-b border-cardBorder pb-5">
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
                   {editingId ? "Edit template" : "Add template"}
@@ -241,7 +230,7 @@ export default function RecurringExpensesSettings({
                   />
                 </label>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="block">
                     <span className="mb-2 block text-xs text-zinc-500">Amount</span>
                     <input
@@ -378,7 +367,7 @@ export default function RecurringExpensesSettings({
                             type="button"
                             aria-label="Delete recurring expense"
                             onClick={() => void handleDelete(item.id)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-cardBorder text-zinc-500 transition-colors hover:border-neonCrimson/40 hover:text-neonCrimson"
+                            className="flex h-10 w-10 items-center justify-center rounded-lg border border-cardBorder text-zinc-500 transition-colors hover:border-neonCrimson/40 hover:text-neonCrimson lg:h-8 lg:w-8"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -403,7 +392,7 @@ export default function RecurringExpensesSettings({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl border border-cardBorder bg-card px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-cardBorder bg-card px-4 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-neonViolet/40 hover:text-zinc-100 lg:min-h-0 lg:py-2"
         >
           <Repeat className="h-4 w-4 text-neonViolet" />
           Recurring

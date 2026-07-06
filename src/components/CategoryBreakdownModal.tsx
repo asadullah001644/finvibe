@@ -1,7 +1,14 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, ChevronDown, X } from "lucide-react";
+import { AlertTriangle, ChevronDown } from "lucide-react";
+import {
+  ModalBackdrop,
+  ModalHeader,
+  getModalMotionProps,
+  modalShellClass,
+  useIsDesktop,
+} from "@/components/ui/modal";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -234,6 +241,7 @@ export default function CategoryBreakdownModal({
 }: CategoryBreakdownModalProps) {
   const [mounted, setMounted] = useState(false);
   const [showEmptyBudgets, setShowEmptyBudgets] = useState(false);
+  const isDesktop = useIsDesktop();
 
   useEffect(() => {
     setMounted(true);
@@ -272,53 +280,34 @@ export default function CategoryBreakdownModal({
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.button
-            type="button"
-            aria-label="Close category breakdown"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md"
+          <ModalBackdrop
+            onClose={onClose}
+            label="Close category breakdown"
           />
 
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-labelledby="category-breakdown-title"
-            initial={{ opacity: 0, scale: 0.95, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 16 }}
-            className="fixed left-1/2 top-1/2 z-[201] flex max-h-[min(90vh,680px)] w-[min(calc(100vw-2rem),28rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-cardBorder bg-card shadow-[0_0_60px_rgba(16,185,129,0.15)]"
+            {...getModalMotionProps(isDesktop)}
+            className={`${modalShellClass()} lg:shadow-[0_0_60px_rgba(16,185,129,0.15)]`}
           >
-            <div className="shrink-0 border-b border-cardBorder px-5 py-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonEmerald/80">
-                    All categories
-                  </p>
-                  <h2
-                    id="category-breakdown-title"
-                    className="mt-2 text-lg font-semibold text-zinc-100"
-                  >
-                    Spending breakdown
-                  </h2>
-                  {totalSpent > 0 && (
-                    <p className="mt-1 text-sm text-zinc-400">
-                      {formatCurrency(totalSpent)} this month
-                    </p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  onClick={onClose}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-cardBorder bg-background text-zinc-400 transition-colors hover:border-neonEmerald/40 hover:text-zinc-100"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            <ModalHeader onClose={onClose} accent="emerald">
+              <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonEmerald/80">
+                All categories
+              </p>
+              <h2
+                id="category-breakdown-title"
+                className="mt-2 text-lg font-semibold text-zinc-100"
+              >
+                Spending breakdown
+              </h2>
+              {totalSpent > 0 && (
+                <p className="mt-1 text-sm text-zinc-400">
+                  {formatCurrency(totalSpent)} this month
+                </p>
+              )}
+            </ModalHeader>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">

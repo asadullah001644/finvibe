@@ -3,7 +3,14 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { LayoutList, Sparkles, X } from "lucide-react";
+import { LayoutList, Sparkles } from "lucide-react";
+import {
+  ModalBackdrop,
+  ModalHeader,
+  getModalMotionProps,
+  modalShellClass,
+  useIsDesktop,
+} from "@/components/ui/modal";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { saveCategoryAllocationsAction } from "@/lib/actions";
 import {
@@ -54,6 +61,7 @@ export default function CategoryAllocation({
   const [categoryRows, setCategoryRows] = useState<BudgetCategory[]>(categories);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isDesktop = useIsDesktop();
 
   const spendable = Math.max(totalSalary - savingsGoal, 0);
 
@@ -128,55 +136,36 @@ export default function CategoryAllocation({
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.button
-            type="button"
-            aria-label="Close category allocation"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md"
+          <ModalBackdrop
+            onClose={() => setOpen(false)}
+            label="Close category allocation"
           />
 
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-labelledby="category-allocation-title"
-            initial={{ opacity: 0, scale: 0.95, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 16 }}
-            className="fixed left-1/2 top-1/2 z-[201] flex max-h-[min(90vh,720px)] w-[min(calc(100vw-2rem),32rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-cardBorder bg-card shadow-[0_0_60px_rgba(139,92,246,0.2)]"
+            {...getModalMotionProps(isDesktop)}
+            className={modalShellClass("32rem")}
           >
-            <div className="shrink-0 border-b border-cardBorder px-6 py-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonEmerald/80">
-                    Category Limits
-                  </p>
-                  <h2
-                    id="category-allocation-title"
-                    className="mt-2 text-lg font-semibold text-zinc-100"
-                  >
-                    {monthLabel}
-                  </h2>
-                  <p className="mt-1 text-sm text-zinc-500">
-                    Optional caps per category — set only what you care about.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  onClick={() => setOpen(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-cardBorder bg-background text-zinc-400 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            <ModalHeader onClose={() => setOpen(false)} accent="emerald">
+              <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonEmerald/80">
+                Category Limits
+              </p>
+              <h2
+                id="category-allocation-title"
+                className="mt-2 text-lg font-semibold text-zinc-100"
+              >
+                {monthLabel}
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Optional caps per category — set only what you care about.
+              </p>
+            </ModalHeader>
 
             <form
               onSubmit={handleSubmit}
-              className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-5"
+              className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5 lg:px-6"
             >
               <div className="mb-4 flex items-center justify-between gap-3">
                 {spendable > 0 ? (
@@ -288,7 +277,7 @@ export default function CategoryAllocation({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="relative inline-flex items-center gap-2 rounded-xl border border-cardBorder bg-card px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-neonEmerald/40 hover:text-zinc-100"
+          className="relative inline-flex min-h-11 items-center gap-2 rounded-xl border border-cardBorder bg-card px-4 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-neonEmerald/40 hover:text-zinc-100 lg:min-h-0 lg:py-2"
         >
           <LayoutList className="h-4 w-4 text-neonEmerald" />
           Categories

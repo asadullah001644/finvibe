@@ -11,7 +11,14 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, Plus, X } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
+import {
+  ModalBackdrop,
+  ModalCloseButton,
+  ModalDragHandle,
+  getModalMotionProps,
+  useIsDesktop,
+} from "@/components/ui/modal";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { saveExpenseAction } from "@/lib/actions";
 import { getCategoryGroups, resolveCategoryHint } from "@/lib/constants";
@@ -89,7 +96,7 @@ export default function QuickLogFAB({
 
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
+  const isDesktop = useIsDesktop();
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -99,18 +106,6 @@ export default function QuickLogFAB({
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(min-width: 1024px)");
-
-    const updateLayout = () => {
-      setIsDesktop(mediaQuery.matches);
-    };
-
-    updateLayout();
-    mediaQuery.addEventListener("change", updateLayout);
-    return () => mediaQuery.removeEventListener("change", updateLayout);
   }, []);
 
   useEffect(() => {
@@ -205,42 +200,19 @@ export default function QuickLogFAB({
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.button
-            type="button"
-            aria-label="Close add expense dialog"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeSheet}
-            className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md"
-          />
+          <ModalBackdrop onClose={closeSheet} label="Close add expense dialog" />
 
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-labelledby="add-expense-title"
-            initial={
-              isDesktop
-                ? { opacity: 0, scale: 0.96, y: 12 }
-                : { opacity: 0, y: "100%" }
-            }
-            animate={
-              isDesktop
-                ? { opacity: 1, scale: 1, y: 0 }
-                : { opacity: 1, y: 0 }
-            }
-            exit={
-              isDesktop
-                ? { opacity: 0, scale: 0.96, y: 12 }
-                : { opacity: 0, y: "100%" }
-            }
-            transition={{ type: "spring", damping: 30, stiffness: 340 }}
+            {...getModalMotionProps(isDesktop)}
             className="fixed z-[201] flex max-h-[min(92vh,720px)] flex-col overflow-hidden border border-cardBorder bg-card shadow-[0_-16px_48px_rgba(0,0,0,0.45)] inset-x-0 bottom-0 rounded-t-[1.75rem] lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-1/2 lg:max-h-[min(calc(100vh-3rem),680px)] lg:w-[min(calc(100vw-3rem),34rem)] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl lg:border-cardBorder/80 lg:bg-[#111114] lg:shadow-[0_28px_80px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.04)]"
           >
             <div className="pointer-events-none absolute inset-x-0 top-0 hidden h-36 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_72%)] lg:block" />
 
             <div className="relative shrink-0 border-b border-cardBorder/80 px-5 pb-4 pt-4 lg:px-7 lg:pb-5 lg:pt-6">
-              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-cardBorder lg:hidden" />
+              <ModalDragHandle />
 
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -258,14 +230,7 @@ export default function QuickLogFAB({
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  aria-label="Close"
-                  onClick={closeSheet}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cardBorder/80 bg-background/80 text-zinc-400 backdrop-blur-sm transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <ModalCloseButton onClick={closeSheet} accent="violet" />
               </div>
             </div>
 

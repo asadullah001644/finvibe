@@ -9,7 +9,12 @@ import {
   startOfMonth,
 } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
-import { Pencil, ShoppingBag, Trash2, X } from "lucide-react";
+import { Pencil, ShoppingBag, Trash2 } from "lucide-react";
+import {
+  ModalBackdrop,
+  ModalCloseButton,
+  ModalDragHandle,
+} from "@/components/ui/modal";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import {
   deleteExpenseAction,
@@ -205,7 +210,7 @@ function ExpenseEditForm({
 
   return (
     <form onSubmit={handleSubmit} className="mt-3 space-y-3 border-t border-cardBorder pt-3">
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <input
           type="number"
           min="0"
@@ -328,7 +333,7 @@ export default function HeatmapCalendar({
           </h3>
         </div>
 
-        <div className="mb-2 grid grid-cols-7 gap-2">
+        <div className="mb-2 grid grid-cols-7 gap-1 sm:gap-2">
           {WEEKDAY_LABELS.map((label) => (
             <div
               key={label}
@@ -339,7 +344,7 @@ export default function HeatmapCalendar({
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {cells.map((cell, index) => {
             if (!cell.date || cell.dayNumber === null) {
               return (
@@ -365,14 +370,14 @@ export default function HeatmapCalendar({
                   setDeleteError(null);
                   setSelectedDay(cell);
                 }}
-                className={`aspect-square rounded-xl border p-1 transition-colors ${getCellClasses(cell.total, cell.isOutlier, isSelected)}`}
+                className={`aspect-square rounded-lg border p-0.5 transition-colors sm:rounded-xl sm:p-1 ${getCellClasses(cell.total, cell.isOutlier, isSelected)}`}
               >
-                <span className="block text-left text-xs font-medium text-zinc-300">
+                <span className="block text-left text-[11px] font-medium text-zinc-300 sm:text-xs">
                   {cell.dayNumber}
                 </span>
                 {cell.total > 0 && (
                   <span
-                    className={`mt-1 block truncate text-[10px] font-semibold ${
+                    className={`mt-0.5 block truncate text-[9px] font-semibold sm:mt-1 sm:text-[10px] ${
                       cell.isOutlier ? "text-neonCrimson" : "text-zinc-400"
                     }`}
                   >
@@ -404,30 +409,25 @@ export default function HeatmapCalendar({
       <AnimatePresence>
         {selectedDay?.date && (
           <>
-            <motion.button
-              type="button"
-              aria-label="Close day details"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => {
+            <ModalBackdrop
+              onClose={() => {
                 setSelectedDay(null);
                 setEditingId(null);
               }}
-              className="fixed inset-0 z-40 bg-background/70 backdrop-blur-sm"
+              label="Close day details"
             />
 
             <motion.div
               role="dialog"
               aria-modal="true"
               aria-labelledby="heatmap-day-title"
-              initial={{ opacity: 0, y: 120 }}
+              initial={{ opacity: 0, y: "100%" }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 120 }}
+              exit={{ opacity: 0, y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[72vh] overflow-y-auto rounded-t-3xl border border-cardBorder bg-card px-5 pb-8 pt-5 shadow-[0_-20px_60px_rgba(139,92,246,0.12)]"
+              className="fixed inset-x-0 bottom-0 z-[201] flex max-h-[min(85vh,640px)] flex-col overflow-y-auto rounded-t-3xl border border-cardBorder bg-card px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 shadow-[0_-20px_60px_rgba(139,92,246,0.12)] lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-1/2 lg:max-h-[min(90vh,640px)] lg:w-[min(calc(100vw-2rem),28rem)] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl lg:pb-8"
             >
-              <div className="mx-auto mb-5 h-1 w-12 rounded-full bg-cardBorder" />
+              <ModalDragHandle />
 
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
@@ -442,18 +442,13 @@ export default function HeatmapCalendar({
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  aria-label="Close"
+                <ModalCloseButton
                   onClick={() => {
                     setSelectedDay(null);
                     setEditingId(null);
                     setDeleteError(null);
                   }}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-cardBorder bg-background text-zinc-400 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                />
               </div>
 
               {deleteError && (
@@ -510,18 +505,18 @@ export default function HeatmapCalendar({
                               <button
                                 type="button"
                                 onClick={() => setEditingId(item._id!)}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-cardBorder px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:border-neonViolet/40 hover:text-zinc-200"
+                                className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-cardBorder px-3.5 py-2 text-sm text-zinc-400 transition-colors hover:border-neonViolet/40 hover:text-zinc-200 lg:min-h-0 lg:gap-1.5 lg:px-3 lg:py-1.5 lg:text-xs"
                               >
-                                <Pencil className="h-3 w-3" />
+                                <Pencil className="h-4 w-4 lg:h-3 w-3" />
                                 Edit
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleDelete(item._id!)}
                                 disabled={deletingId === item._id}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-cardBorder px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:border-neonCrimson/40 hover:text-neonCrimson disabled:opacity-60"
+                                className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-cardBorder px-3.5 py-2 text-sm text-zinc-400 transition-colors hover:border-neonCrimson/40 hover:text-neonCrimson disabled:opacity-60 lg:min-h-0 lg:gap-1.5 lg:px-3 lg:py-1.5 lg:text-xs"
                               >
-                                <Trash2 className="h-3 w-3" />
+                                <Trash2 className="h-4 w-4 lg:h-3 w-3" />
                                 {deletingId === item._id ? "Deleting..." : "Delete"}
                               </button>
                             </div>

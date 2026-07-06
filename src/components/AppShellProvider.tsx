@@ -209,6 +209,7 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
                 onCategoriesOpenChange={setCategoriesOpen}
                 onRecurringOpenChange={setRecurringOpen}
                 pinLockEnabled={monthData.pinLockEnabled ?? false}
+                isSuperAdmin={monthData.isSuperAdmin}
               />
             )}
 

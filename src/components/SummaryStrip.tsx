@@ -90,10 +90,10 @@ export default function SummaryStrip({
               <p
                 className={`font-medium uppercase tracking-[0.18em] ${
                   isHighlight
-                    ? "text-[11px] text-neonEmerald/80"
+                    ? "text-xs text-neonEmerald/80 lg:text-[11px]"
                     : isMuted
-                      ? "text-[10px] tracking-[0.16em] text-zinc-600"
-                      : "text-[11px] text-zinc-500"
+                      ? "text-xs tracking-[0.16em] text-zinc-600 lg:text-[10px]"
+                      : "text-xs text-zinc-500 lg:text-[11px]"
                 }`}
               >
                 {item.label}

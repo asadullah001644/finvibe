@@ -87,7 +87,7 @@ export default function SettingsPanel({
   }
 
   return (
-    <main className="min-h-screen bg-[#09090B] px-4 py-8 text-zinc-100 lg:px-8">
+    <main className="min-h-screen bg-[#09090B] py-6 text-zinc-100 lg:px-8 lg:py-8">
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center justify-between gap-3">
           <div>

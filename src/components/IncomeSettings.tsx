@@ -3,7 +3,14 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Wallet, X } from "lucide-react";
+import { Wallet } from "lucide-react";
+import {
+  ModalBackdrop,
+  ModalHeader,
+  getModalMotionProps,
+  modalShellClass,
+  useIsDesktop,
+} from "@/components/ui/modal";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { getPriorMonthBudgetAction, saveIncomeAction } from "@/lib/actions";
 import { formatMonthLabel } from "@/lib/month";
@@ -52,6 +59,7 @@ export default function IncomeSettings({
   const [prefillLabel, setPrefillLabel] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isDesktop = useIsDesktop();
 
   const carryForwardLabel = carriedFromMonthLabel ?? prefillLabel;
 
@@ -158,53 +166,37 @@ export default function IncomeSettings({
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.button
-            type="button"
-            aria-label="Close income settings"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md"
+          <ModalBackdrop
+            onClose={() => setOpen(false)}
+            label="Close income settings"
           />
 
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-labelledby="income-settings-title"
-            initial={{ opacity: 0, scale: 0.95, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 16 }}
-            className="fixed left-1/2 top-1/2 z-[201] w-[min(calc(100vw-2rem),28rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-cardBorder bg-card shadow-[0_0_60px_rgba(139,92,246,0.2)]"
+            {...getModalMotionProps(isDesktop)}
+            className={modalShellClass()}
           >
-            <div className="border-b border-cardBorder px-6 py-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonViolet/80">
-                    Monthly Income
-                  </p>
-                  <h2
-                    id="income-settings-title"
-                    className="mt-2 text-lg font-semibold text-zinc-100"
-                  >
-                    {monthLabel}
-                  </h2>
-                  <p className="mt-1 text-sm text-zinc-500">
-                    Salary and savings goal only — category limits are separate.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  onClick={() => setOpen(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-cardBorder bg-background text-zinc-400 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            <ModalHeader onClose={() => setOpen(false)}>
+              <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonViolet/80">
+                Monthly Income
+              </p>
+              <h2
+                id="income-settings-title"
+                className="mt-2 text-lg font-semibold text-zinc-100"
+              >
+                {monthLabel}
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Salary and savings goal only — category limits are separate.
+              </p>
+            </ModalHeader>
 
-            <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
+            <form
+              onSubmit={handleSubmit}
+              className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 lg:px-6"
+            >
               {carryForwardLabel && (
                 <p className="rounded-xl border border-neonViolet/25 bg-neonViolet/10 px-4 py-3 text-sm text-zinc-300">
                   Carried forward from{" "}
@@ -281,7 +273,7 @@ export default function IncomeSettings({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl border border-cardBorder bg-card px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-cardBorder bg-card px-4 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-neonViolet/40 hover:text-zinc-100 lg:min-h-0 lg:py-2"
         >
           <Wallet className="h-4 w-4 text-neonViolet" />
           Income

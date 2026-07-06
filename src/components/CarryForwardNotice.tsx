@@ -30,7 +30,7 @@ export default function CarryForwardNotice({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
-          className="fixed inset-x-4 bottom-[5.75rem] z-[150] mx-auto max-w-lg sm:bottom-24"
+          className="fixed inset-x-4 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-[150] mx-auto max-w-lg sm:bottom-24"
         >
           <div className="flex items-center gap-3 rounded-xl border border-neonViolet/30 bg-card/95 px-4 py-3 shadow-[0_0_30px_rgba(139,92,246,0.15)] backdrop-blur-md">
             <button
@@ -51,9 +51,9 @@ export default function CarryForwardNotice({
               type="button"
               aria-label="Dismiss notice"
               onClick={() => setVisible(false)}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cardBorder text-zinc-400 transition-colors hover:border-neonViolet/40 hover:text-zinc-100"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-cardBorder text-zinc-400 transition-colors hover:border-neonViolet/40 hover:text-zinc-100 lg:h-8 lg:w-8"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5 lg:h-4 lg:w-4" />
             </button>
           </div>
         </motion.div>
