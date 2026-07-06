@@ -1,6 +1,7 @@
 import { MonthDataSync } from "@/components/AppShellProvider";
 import ExpenseContentSuspense from "@/components/ExpenseContentSuspense";
 import CategoriesContentLoader from "@/components/loaders/CategoriesContentLoader";
+import CategoriesPageSkeleton from "@/components/skeletons/CategoriesPageSkeleton";
 import {
   AuthGate,
   getAuthenticatedShellData,
@@ -48,7 +49,7 @@ export default async function CategoriesPage({
         userEmail={userEmail}
         isSuperAdmin={isSuperAdmin}
       >
-        <ExpenseContentSuspense>
+        <ExpenseContentSuspense fallback={<CategoriesPageSkeleton />}>
           <CategoriesContentLoader monthKey={monthKey} budget={budget} />
         </ExpenseContentSuspense>
       </MonthDataSync>

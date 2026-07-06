@@ -1,6 +1,7 @@
 import { MonthDataSync } from "@/components/AppShellProvider";
 import ExpenseContentSuspense from "@/components/ExpenseContentSuspense";
 import OverviewContentLoader from "@/components/loaders/OverviewContentLoader";
+import OverviewPageSkeleton from "@/components/skeletons/OverviewPageSkeleton";
 import {
   AuthGate,
   getAuthenticatedShellData,
@@ -41,7 +42,7 @@ export default async function OverviewPage({ searchParams }: OverviewPageProps) 
         userEmail={userEmail}
         isSuperAdmin={isSuperAdmin}
       >
-        <ExpenseContentSuspense>
+        <ExpenseContentSuspense fallback={<OverviewPageSkeleton />}>
           <OverviewContentLoader
             monthKey={monthKey}
             monthLabel={monthLabel}

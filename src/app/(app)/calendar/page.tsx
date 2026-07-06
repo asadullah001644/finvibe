@@ -1,6 +1,7 @@
 import { MonthDataSync } from "@/components/AppShellProvider";
 import ExpenseContentSuspense from "@/components/ExpenseContentSuspense";
 import CalendarContentLoader from "@/components/loaders/CalendarContentLoader";
+import CalendarPageSkeleton from "@/components/skeletons/CalendarPageSkeleton";
 import {
   AuthGate,
   getAuthenticatedShellData,
@@ -41,7 +42,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         userEmail={userEmail}
         isSuperAdmin={isSuperAdmin}
       >
-        <ExpenseContentSuspense>
+        <ExpenseContentSuspense fallback={<CalendarPageSkeleton />}>
           <CalendarContentLoader monthKey={monthKey} budget={budget} />
         </ExpenseContentSuspense>
       </MonthDataSync>

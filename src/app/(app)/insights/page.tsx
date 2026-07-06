@@ -1,6 +1,7 @@
 import { MonthDataSync } from "@/components/AppShellProvider";
 import ExpenseContentSuspense from "@/components/ExpenseContentSuspense";
 import InsightsContentLoader from "@/components/loaders/InsightsContentLoader";
+import InsightsPageSkeleton from "@/components/skeletons/InsightsPageSkeleton";
 import NavigationContentReady from "@/components/NavigationContentReady";
 import {
   AuthGate,
@@ -44,7 +45,7 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
         isSuperAdmin={isSuperAdmin}
       >
         {hasBudgetMetrics ? (
-          <ExpenseContentSuspense>
+          <ExpenseContentSuspense fallback={<InsightsPageSkeleton />}>
             <InsightsContentLoader
               monthKey={monthKey}
               budget={budget}

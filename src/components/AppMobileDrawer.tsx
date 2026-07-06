@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Calendar, Loader2, Settings, Shield } from "lucide-react";
 import BudgetToolButtons from "@/components/BudgetToolButtons";
+import InstallAppButton from "@/components/InstallAppButton";
 import LockButton from "@/components/LockButton";
 import SignOutButton from "@/components/SignOutButton";
 import AppLogo from "@/components/AppLogo";
@@ -182,6 +183,7 @@ export default function AppMobileDrawer({
                   Account
                 </p>
                 <div className="space-y-1">
+                  <InstallAppButton onActivate={onClose} />
                   {(() => {
                     const settingsPending = pendingHref === "/settings";
 

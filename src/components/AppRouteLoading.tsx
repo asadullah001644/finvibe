@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import PageRouteSkeleton from "@/components/PageRouteSkeleton";
 
 export default function AppRouteLoading() {
   return (
@@ -6,12 +6,9 @@ export default function AppRouteLoading() {
       role="status"
       aria-live="polite"
       aria-label="Loading page"
-      className="flex min-h-[50vh] items-start justify-center pt-24"
+      className="min-h-[50vh] pt-2"
     >
-      <div className="flex items-center gap-2 rounded-full border border-cardBorder/80 bg-card px-4 py-2 shadow-lg">
-        <Loader2 className="h-4 w-4 animate-spin text-neonViolet" />
-        <span className="text-sm text-zinc-400">Loading</span>
-      </div>
+      <PageRouteSkeleton />
     </div>
   );
 }

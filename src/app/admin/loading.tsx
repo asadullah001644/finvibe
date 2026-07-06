@@ -1,5 +1,5 @@
-import AppRouteLoading from "@/components/AppRouteLoading";
+import AdminPageSkeleton from "@/components/skeletons/AdminPageSkeleton";
 
 export default function AdminLoading() {
-  return <AppRouteLoading />;
+  return <AdminPageSkeleton />;
 }

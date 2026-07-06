@@ -1,5 +1,5 @@
-import AppRouteLoading from "@/components/AppRouteLoading";
+import SettingsPageSkeleton from "@/components/skeletons/SettingsPageSkeleton";
 
 export default function SettingsLoading() {
-  return <AppRouteLoading />;
+  return <SettingsPageSkeleton />;
 }
