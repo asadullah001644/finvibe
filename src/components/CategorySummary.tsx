@@ -1,13 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Loader2 } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  CircleAlert,
+  CircleCheck,
+  Loader2,
+} from "lucide-react";
 import { useAppShellActions } from "@/components/AppShellProvider";
 import { formatCurrency } from "@/lib/currency";
 import {
   formatLimitRowAmount,
+  formatRemainingLabel,
+  getCategoryLimitStatus,
   getOverviewCategoryHighlights,
   type CategoryExpense,
+  type CategoryLimitStatus,
   type CategoryRow,
 } from "@/lib/categorySpend";
 import { buildCategoriesUrl } from "@/lib/navigation";
@@ -23,17 +32,68 @@ interface CategorySummaryProps {
 const rowLinkClass =
   "group flex items-center justify-between gap-3 rounded-xl border border-transparent px-2 py-2.5 transition-colors hover:border-cardBorder hover:bg-background/50";
 
+const limitStatusConfig: Record<
+  Exclude<CategoryLimitStatus, "none">,
+  {
+    Icon: typeof CheckCircle2;
+    className: string;
+    label: string;
+  }
+> = {
+  remaining: {
+    Icon: CircleCheck,
+    className: "text-neonEmerald/80",
+    label: "Budget remaining",
+  },
+  atLimit: {
+    Icon: CheckCircle2,
+    className: "text-amber-400",
+    label: "Limit reached",
+  },
+  over: {
+    Icon: CircleAlert,
+    className: "text-neonCrimson",
+    label: "Over limit",
+  },
+};
+
+function CategoryLimitStatusIcon({
+  status,
+  className = "h-3.5 w-3.5",
+}: {
+  status: Exclude<CategoryLimitStatus, "none">;
+  className?: string;
+}) {
+  const { Icon, className: toneClass } = limitStatusConfig[status];
+
+  return (
+    <Icon
+      className={`shrink-0 ${toneClass} ${className}`}
+      aria-hidden="true"
+    />
+  );
+}
+
 function LimitRow({ row, monthKey }: { row: CategoryRow; monthKey: string }) {
+  const status = getCategoryLimitStatus(row);
+  if (status !== "over" && status !== "atLimit") {
+    return null;
+  }
+
   return (
     <li>
       <Link
         href={buildCategoriesUrl(monthKey, { category: row.name })}
         className={rowLinkClass}
+        aria-label={`${row.displayName}, ${limitStatusConfig[status].label}, ${formatLimitRowAmount(row)}`}
       >
-        <span className="truncate text-sm font-medium text-zinc-200 group-hover:text-neonViolet">
-          {row.displayName}
-        </span>
-        <span className="shrink-0 text-right text-sm font-semibold text-zinc-300">
+        <div className="flex min-w-0 items-center gap-2">
+          <CategoryLimitStatusIcon status={status} />
+          <span className="truncate text-sm font-medium text-zinc-200 group-hover:text-neonViolet">
+            {row.displayName}
+          </span>
+        </div>
+        <span className="shrink-0 text-right text-sm font-semibold tabular-nums text-zinc-300">
           {formatLimitRowAmount(row)}
         </span>
       </Link>
@@ -42,18 +102,37 @@ function LimitRow({ row, monthKey }: { row: CategoryRow; monthKey: string }) {
 }
 
 function TopSpendRow({ row, monthKey }: { row: CategoryRow; monthKey: string }) {
+  const status = getCategoryLimitStatus(row);
+  const remainingLabel = formatRemainingLabel(row);
+  const hasLimit = status === "remaining";
+
   return (
     <li>
       <Link
         href={buildCategoriesUrl(monthKey, { category: row.name })}
         className={rowLinkClass}
+        aria-label={
+          remainingLabel
+            ? `${row.displayName}, ${formatCurrency(row.spent)}, ${remainingLabel}`
+            : `${row.displayName}, ${formatCurrency(row.spent)}`
+        }
       >
-        <span className="truncate text-sm font-medium text-zinc-200 group-hover:text-neonViolet">
-          {row.displayName}
-        </span>
-        <span className="shrink-0 text-sm font-semibold text-zinc-300">
-          {formatCurrency(row.spent)}
-        </span>
+        <div className="flex min-w-0 items-center gap-2">
+          {hasLimit && <CategoryLimitStatusIcon status="remaining" />}
+          <span className="truncate text-sm font-medium text-zinc-200 group-hover:text-neonViolet">
+            {row.displayName}
+          </span>
+        </div>
+        <div className="shrink-0 text-right">
+          <span className="block text-sm font-semibold tabular-nums text-zinc-300">
+            {formatCurrency(row.spent)}
+          </span>
+          {remainingLabel && (
+            <span className="mt-0.5 flex items-center justify-end gap-1 text-[11px] font-medium text-neonEmerald/90 sm:text-xs">
+              {remainingLabel}
+            </span>
+          )}
+        </div>
       </Link>
     </li>
   );
@@ -120,9 +199,21 @@ export default function CategorySummary({
         <div className="space-y-5">
           {atOrOverLimit.length > 0 && (
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Category limits
-              </p>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Category limits
+                </p>
+                <div className="hidden items-center gap-3 text-[10px] text-zinc-600 sm:flex">
+                  <span className="inline-flex items-center gap-1">
+                    <CategoryLimitStatusIcon status="atLimit" className="h-3 w-3" />
+                    Reached
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <CategoryLimitStatusIcon status="over" className="h-3 w-3" />
+                    Over
+                  </span>
+                </div>
+              </div>
               <ul className="space-y-0.5">
                 {atOrOverLimit.map((row) => (
                   <LimitRow key={row.name} row={row} monthKey={monthKey} />
@@ -133,9 +224,17 @@ export default function CategorySummary({
 
           {topSpenders.length > 0 && (
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Top spending
-              </p>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Top spending
+                </p>
+                {hasLimitsSet && (
+                  <span className="hidden items-center gap-1 text-[10px] text-zinc-600 sm:inline-flex">
+                    <CategoryLimitStatusIcon status="remaining" className="h-3 w-3" />
+                    Has budget left
+                  </span>
+                )}
+              </div>
               <ul className="space-y-0.5">
                 {topSpenders.map((row) => (
                   <TopSpendRow key={row.name} row={row} monthKey={monthKey} />

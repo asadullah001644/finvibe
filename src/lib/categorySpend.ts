@@ -308,13 +308,34 @@ export function getAtOrOverLimitRows(rows: CategoryRow[]): CategoryRow[] {
   );
 }
 
-export function formatLimitRowAmount(row: CategoryRow): string {
-  const amounts = `${formatCurrency(row.spent)} / ${formatCurrency(row.allocated)}`;
-  if (row.isOver) {
-    return amounts;
+export type CategoryLimitStatus = "over" | "atLimit" | "remaining" | "none";
+
+export function getCategoryLimitStatus(row: CategoryRow): CategoryLimitStatus {
+  if (row.allocated <= 0) {
+    return "none";
   }
 
-  return `${amounts} · At limit`;
+  if (row.isOver) {
+    return "over";
+  }
+
+  if (row.spent >= row.allocated) {
+    return "atLimit";
+  }
+
+  return "remaining";
+}
+
+export function formatLimitRowAmount(row: CategoryRow): string {
+  return `${formatCurrency(row.spent)} / ${formatCurrency(row.allocated)}`;
+}
+
+export function formatRemainingLabel(row: CategoryRow): string | null {
+  if (getCategoryLimitStatus(row) !== "remaining") {
+    return null;
+  }
+
+  return `${formatCurrency(row.allocated - row.spent)} left`;
 }
 
 export function getOverviewCategoryHighlights(
