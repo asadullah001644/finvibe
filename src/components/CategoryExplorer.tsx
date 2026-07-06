@@ -601,7 +601,7 @@ export default function CategoryExplorer({
             {filteredExpenses.length}
             {monthlyTotal > 0 && (
               <span className="ml-1 text-xs font-normal text-zinc-500">
-                ({spendShare}% of month)
+                ({spendShare}% of total spending)
               </span>
             )}
           </p>

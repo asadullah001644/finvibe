@@ -30,6 +30,10 @@ export function sumExpenses(expenses: CategoryExpense[]): number {
   return expenses.reduce((sum, expense) => sum + expense.amount, 0);
 }
 
+export function formatShareOfMonthLabel(shareOfMonth: number): string {
+  return `${shareOfMonth}% of total spending`;
+}
+
 function buildCategoryRow(
   name: string,
   displayName: string,

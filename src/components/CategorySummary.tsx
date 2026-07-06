@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
 import { useAppShellActions } from "@/components/AppShellProvider";
 import { formatCurrency } from "@/lib/currency";
 import {
+  formatShareOfMonthLabel,
   getOverviewCategoryHighlights,
   type CategoryExpense,
 } from "@/lib/categorySpend";
@@ -21,7 +22,6 @@ interface CategorySummaryProps {
 function SummaryRow({
   row,
   monthKey,
-  showLimit = false,
 }: {
   row: {
     name: string;
@@ -30,14 +30,13 @@ function SummaryRow({
     allocated: number;
     isOver: boolean;
     shareOfMonth: number;
+    percent: number | null;
   };
   monthKey: string;
-  showLimit?: boolean;
 }) {
-  const fillPercent =
-    row.allocated > 0
-      ? Math.min((row.spent / row.allocated) * 100, 100)
-      : Math.min(row.shareOfMonth, 100);
+  const fillPercent = Math.min(row.shareOfMonth, 100);
+  const limitPercent =
+    row.allocated > 0 ? Math.round((row.spent / row.allocated) * 100) : null;
 
   return (
     <li>
@@ -73,11 +72,11 @@ function SummaryRow({
         </div>
 
         <p className="mt-1 text-xs text-zinc-500">
-          {row.shareOfMonth}% of month
-          {showLimit && row.allocated > 0 && (
+          {formatShareOfMonthLabel(row.shareOfMonth)}
+          {limitPercent !== null && (
             <span className={row.isOver ? " text-neonCrimson" : ""}>
               {" "}
-              · {Math.round((row.spent / row.allocated) * 100)}% of limit
+              · {limitPercent}% of category limit
             </span>
           )}
         </p>
@@ -116,7 +115,7 @@ export default function CategorySummary({
             Spending Snapshot
           </p>
           <p className="mt-1 text-sm text-zinc-500">
-            Top categories this month — tap for details
+            Share of this month&apos;s spending — tap a category for details
           </p>
         </div>
         <Link
@@ -157,12 +156,7 @@ export default function CategorySummary({
               </p>
               <ul className="space-y-1">
                 {overBudget.map((row) => (
-                  <SummaryRow
-                    key={row.name}
-                    row={row}
-                    monthKey={monthKey}
-                    showLimit
-                  />
+                  <SummaryRow key={row.name} row={row} monthKey={monthKey} />
                 ))}
               </ul>
             </div>

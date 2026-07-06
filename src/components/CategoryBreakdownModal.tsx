@@ -16,6 +16,7 @@ import {
   buildGroupedCategoryRows,
   countActiveCategories,
   filterCategoryGroups,
+  formatShareOfMonthLabel,
   type CategoryExpense,
   type CategoryGroupRow,
   type CategoryRow,
@@ -33,19 +34,20 @@ interface CategoryBreakdownModalProps {
 }
 
 function rowSubtext(row: CategoryRow): string | null {
-  if (row.allocated > 0) {
-    const parts = [`${row.percent}% of limit`];
+  if (row.spent <= 0) {
+    return null;
+  }
+
+  const parts = [formatShareOfMonthLabel(row.shareOfMonth)];
+
+  if (row.allocated > 0 && row.percent !== null) {
+    parts.push(`${row.percent}% of category limit`);
     if (row.isOver) {
       parts.push(`${formatCurrency(row.spent - row.allocated)} over`);
     }
-    return parts.join(" · ");
   }
 
-  if (row.spent > 0) {
-    return `${row.shareOfMonth}% of month`;
-  }
-
-  return null;
+  return parts.join(" · ");
 }
 
 function BreakdownRow({
@@ -55,10 +57,7 @@ function BreakdownRow({
   row: CategoryRow;
   onCategorySelect?: (categoryName: string) => void;
 }) {
-  const fillPercent =
-    row.allocated > 0
-      ? Math.min((row.spent / row.allocated) * 100, 100)
-      : Math.min(row.shareOfMonth, 100);
+  const fillPercent = Math.min(row.shareOfMonth, 100);
 
   const subtext = rowSubtext(row);
 
