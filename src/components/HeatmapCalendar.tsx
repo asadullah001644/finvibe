@@ -24,7 +24,7 @@ import {
   getCategoryGroups,
   getChildCategoryName,
 } from "@/lib/constants";
-import { formatCurrencyPrecise } from "@/lib/currency";
+import { formatCurrencyPrecise, formatHeatmapCellAmount } from "@/lib/currency";
 import { compareExpensesByRecency } from "@/lib/expenseSort";
 import { monthKeyToDate } from "@/lib/month";
 
@@ -333,18 +333,19 @@ export default function HeatmapCalendar({
           </h3>
         </div>
 
-        <div className="mb-2 grid grid-cols-7 gap-1 sm:gap-2">
+        <div className="mb-2 grid grid-cols-7 gap-0.5 sm:gap-2">
           {WEEKDAY_LABELS.map((label) => (
             <div
               key={label}
-              className="text-center text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500"
+              className="text-center text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 sm:text-[11px] sm:tracking-[0.18em]"
             >
-              {label}
+              <span className="sm:hidden">{label.slice(0, 1)}</span>
+              <span className="hidden sm:inline">{label}</span>
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-1 sm:gap-2">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-2">
           {cells.map((cell, index) => {
             if (!cell.date || cell.dayNumber === null) {
               return (
@@ -370,19 +371,28 @@ export default function HeatmapCalendar({
                   setDeleteError(null);
                   setSelectedDay(cell);
                 }}
-                className={`aspect-square rounded-lg border p-0.5 transition-colors sm:rounded-xl sm:p-1 ${getCellClasses(cell.total, cell.isOutlier, isSelected)}`}
+                className={`flex min-h-[3.75rem] flex-col items-start justify-start rounded-lg border p-1 text-left transition-colors sm:aspect-square sm:min-h-0 sm:rounded-xl sm:p-1.5 ${getCellClasses(cell.total, cell.isOutlier, isSelected)}`}
               >
-                <span className="block text-left text-[11px] font-medium text-zinc-300 sm:text-xs">
+                <span className="text-[11px] font-medium leading-none text-zinc-300 sm:text-xs">
                   {cell.dayNumber}
                 </span>
                 {cell.total > 0 && (
-                  <span
-                    className={`mt-0.5 block truncate text-[9px] font-semibold sm:mt-1 sm:text-[10px] ${
-                      cell.isOutlier ? "text-neonCrimson" : "text-zinc-400"
-                    }`}
-                  >
-                    {formatCurrencyPrecise(cell.total)}
-                  </span>
+                  <>
+                    <span
+                      className={`mt-1 block text-[10px] font-semibold leading-tight sm:hidden ${
+                        cell.isOutlier ? "text-neonCrimson" : "text-zinc-300"
+                      }`}
+                    >
+                      {formatHeatmapCellAmount(cell.total)}
+                    </span>
+                    <span
+                      className={`mt-1 hidden text-[10px] font-semibold leading-tight sm:block lg:text-[11px] ${
+                        cell.isOutlier ? "text-neonCrimson" : "text-zinc-400"
+                      }`}
+                    >
+                      {formatCurrencyPrecise(cell.total)}
+                    </span>
+                  </>
                 )}
               </button>
             );
