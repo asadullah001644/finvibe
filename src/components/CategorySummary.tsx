@@ -1,13 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  CheckCircle2,
-  CircleAlert,
-  CircleCheck,
-  Loader2,
-} from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
+import CategoryLimitStatusIcon, {
+  limitStatusLabels,
+} from "@/components/CategoryLimitStatusIcon";
 import { useAppShellActions } from "@/components/AppShellProvider";
 import { formatCurrency } from "@/lib/currency";
 import {
@@ -16,7 +13,6 @@ import {
   getCategoryLimitStatus,
   getOverviewCategoryHighlights,
   type CategoryExpense,
-  type CategoryLimitStatus,
   type CategoryRow,
 } from "@/lib/categorySpend";
 import { buildCategoriesUrl } from "@/lib/navigation";
@@ -32,48 +28,6 @@ interface CategorySummaryProps {
 const rowLinkClass =
   "group flex items-center justify-between gap-3 rounded-xl border border-transparent px-2 py-2.5 transition-colors hover:border-cardBorder hover:bg-background/50";
 
-const limitStatusConfig: Record<
-  Exclude<CategoryLimitStatus, "none">,
-  {
-    Icon: typeof CheckCircle2;
-    className: string;
-    label: string;
-  }
-> = {
-  remaining: {
-    Icon: CircleCheck,
-    className: "text-neonEmerald/80",
-    label: "Budget remaining",
-  },
-  atLimit: {
-    Icon: CheckCircle2,
-    className: "text-amber-400",
-    label: "Limit reached",
-  },
-  over: {
-    Icon: CircleAlert,
-    className: "text-neonCrimson",
-    label: "Over limit",
-  },
-};
-
-function CategoryLimitStatusIcon({
-  status,
-  className = "h-3.5 w-3.5",
-}: {
-  status: Exclude<CategoryLimitStatus, "none">;
-  className?: string;
-}) {
-  const { Icon, className: toneClass } = limitStatusConfig[status];
-
-  return (
-    <Icon
-      className={`shrink-0 ${toneClass} ${className}`}
-      aria-hidden="true"
-    />
-  );
-}
-
 function LimitRow({ row, monthKey }: { row: CategoryRow; monthKey: string }) {
   const status = getCategoryLimitStatus(row);
   if (status !== "over" && status !== "atLimit") {
@@ -85,7 +39,7 @@ function LimitRow({ row, monthKey }: { row: CategoryRow; monthKey: string }) {
       <Link
         href={buildCategoriesUrl(monthKey, { category: row.name })}
         className={rowLinkClass}
-        aria-label={`${row.displayName}, ${limitStatusConfig[status].label}, ${formatLimitRowAmount(row)}`}
+        aria-label={`${row.displayName}, ${limitStatusLabels[status]}, ${formatLimitRowAmount(row)}`}
       >
         <div className="flex min-w-0 items-center gap-2">
           <CategoryLimitStatusIcon status={status} />

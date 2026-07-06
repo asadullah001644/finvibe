@@ -24,6 +24,7 @@ import {
   updateExpenseAction,
 } from "@/lib/actions";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
+import CategoryBudgetPanel from "@/components/CategoryBudgetPanel";
 import {
   CATEGORY_SEPARATOR,
   getCategoryGroups,
@@ -32,6 +33,7 @@ import {
 import { formatCurrency, formatCurrencyPrecise } from "@/lib/currency";
 import { compareExpensesByRecency } from "@/lib/expenseSort";
 import { buildCategoriesUrl } from "@/lib/navigation";
+import type { BudgetCategory } from "@/lib/types";
 
 export type CategoryFilterGroup = "all" | "Home" | "Flat" | "General";
 
@@ -54,7 +56,7 @@ interface ExplorerExpense {
 interface CategoryExplorerProps {
   monthKey: string;
   expenses: ExplorerExpense[];
-  categoryNames: string[];
+  categories: BudgetCategory[];
 }
 
 function normalizeExpenseDate(date: Date | string): Date {
@@ -444,6 +446,28 @@ function CategoryFilterModal({
   return createPortal(modal, document.body);
 }
 
+function getActiveCategoryNames(
+  expenses: ExplorerExpense[],
+  group: CategoryFilterGroup,
+  selectedCategories: string[],
+): string[] {
+  if (selectedCategories.length > 0) {
+    return selectedCategories;
+  }
+
+  if (group === "all") {
+    return [];
+  }
+
+  return [
+    ...new Set(
+      expenses
+        .filter((expense) => expenseMatchesGroup(expense, group))
+        .map((expense) => expense.category),
+    ),
+  ];
+}
+
 function readFiltersFromSearchParams(
   searchParams: URLSearchParams,
 ): { group: CategoryFilterGroup; categories: string[] } {
@@ -464,8 +488,9 @@ function readFiltersFromSearchParams(
 export default function CategoryExplorer({
   monthKey,
   expenses,
-  categoryNames,
+  categories,
 }: CategoryExplorerProps) {
+  const categoryNames = categories.map((category) => category.name);
   const searchParams = useSearchParams();
   const { refresh } = useAppNavigation();
 
@@ -500,8 +525,11 @@ export default function CategoryExplorer({
     0,
   );
   const monthlyTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const spendShare =
-    monthlyTotal > 0 ? Math.round((totalSpent / monthlyTotal) * 100) : 0;
+  const activeCategoryNames = getActiveCategoryNames(
+    expenses,
+    appliedGroup,
+    appliedCategories,
+  );
 
   const handleApplyFilters = async (
     group: CategoryFilterGroup,
@@ -547,143 +575,194 @@ export default function CategoryExplorer({
   };
 
   const filterLabel = formatFilterLabel(appliedGroup, appliedCategories);
+  const hasActiveFilter =
+    appliedCategories.length > 0 || appliedGroup !== "all";
+
+  const handleSelectCategory = (categoryName: string) => {
+    if (
+      appliedCategories.length === 1 &&
+      appliedCategories[0] === categoryName
+    ) {
+      void handleApplyFilters("all", []);
+      return;
+    }
+
+    void handleApplyFilters("all", [categoryName]);
+  };
+
+  const handleClearFilter = () => {
+    void handleApplyFilters("all", []);
+  };
+
+  const handleQuickGroup = (group: CategoryFilterGroup) => {
+    void handleApplyFilters(group, []);
+  };
 
   return (
-    <section className="rounded-2xl border border-cardBorder bg-card/60 p-4 sm:p-5">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonViolet/80">
-            Category Explorer
-          </p>
-          <p className="mt-1 text-sm text-zinc-500">
-            Browse and manage expenses by category
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setFilterOpen(true)}
-          disabled={isApplyingFilters}
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-neonViolet/30 bg-neonViolet/10 px-4 py-2.5 text-sm font-medium text-neonViolet transition-colors hover:bg-neonViolet/20 disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-0 lg:px-3 lg:py-2 lg:text-xs"
-        >
-          <Filter className="h-4 w-4 lg:h-3.5 lg:w-3.5" />
-          {filterLabel}
-        </button>
-      </div>
-
-      <CategoryFilterModal
-        isOpen={filterOpen}
-        onClose={() => {
-          if (!isApplyingFilters) {
-            setFilterOpen(false);
-          }
-        }}
-        categoryNames={categoryNames}
-        appliedGroup={appliedGroup}
-        appliedCategories={appliedCategories}
-        onApply={handleApplyFilters}
-        isApplying={isApplyingFilters}
+    <div className="grid gap-6 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] lg:items-start">
+      <CategoryBudgetPanel
+        categories={categories}
+        expenses={expenses}
+        activeCategoryNames={activeCategoryNames}
+        onSelectCategory={handleSelectCategory}
+        onClearFilter={handleClearFilter}
       />
 
-      <div className="mb-5 grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-cardBorder bg-background/60 px-3 py-3">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-            Total spent
-          </p>
-          <p className="mt-1 text-sm font-semibold text-neonCrimson">
-            {formatCurrency(totalSpent)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-cardBorder bg-background/60 px-3 py-3">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-            Transactions
-          </p>
-          <p className="mt-1 text-sm font-semibold text-zinc-200">
-            {filteredExpenses.length}
-            {monthlyTotal > 0 && (
-              <span className="ml-1 text-xs font-normal text-zinc-500">
-                ({spendShare}% of total spending)
-              </span>
-            )}
-          </p>
-        </div>
-      </div>
-
-      {deleteError && (
-        <p className="mb-4 rounded-xl border border-neonCrimson/30 bg-neonCrimson/10 px-4 py-3 text-sm text-neonCrimson">
-          {deleteError}
-        </p>
-      )}
-
-      {expenses.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-cardBorder bg-background/40 px-4 py-8 text-center text-sm text-zinc-500">
-          No expenses logged this month yet.
-        </div>
-      ) : filteredExpenses.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-cardBorder bg-background/40 px-4 py-8 text-center text-sm text-zinc-500">
-          No expenses match this category filter.
-        </div>
-      ) : (
-        <ul className="space-y-3">
-          {filteredExpenses.map((item, index) => (
-            <li
-              key={item._id ?? `${item.category}-${item.amount}-${index}`}
-              className="rounded-2xl border border-cardBorder bg-background/70 px-4 py-3"
-            >
-              {editingId === item._id ? (
-                <ExpenseEditForm
-                  item={item}
-                  categoryNames={categoryNames}
-                  onCancel={() => setEditingId(null)}
-                  onSaved={handleSaved}
-                />
+      <section className="rounded-2xl border border-cardBorder bg-card/60 p-4 sm:p-5">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonViolet/80">
+              Transactions
+            </p>
+            <p className="mt-1 text-sm text-zinc-500">
+              {hasActiveFilter ? (
+                <>
+                  Showing{" "}
+                  <span className="font-medium text-zinc-300">{filterLabel}</span>
+                  {" · "}
+                  {formatCurrency(totalSpent)} · {filteredExpenses.length}{" "}
+                  {filteredExpenses.length === 1 ? "entry" : "entries"}
+                </>
               ) : (
                 <>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex rounded-full border border-neonViolet/30 bg-neonViolet/10 px-2.5 py-1 text-[11px] font-medium text-neonViolet">
-                          {getChildCategoryName(item.category)}
-                        </span>
-                        <span className="text-xs text-zinc-500">
-                          {format(normalizeExpenseDate(item.date), "MMM d, yyyy")}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm text-zinc-300">
-                        {item.description.trim() || "No description provided"}
-                      </p>
-                    </div>
-                    <p className="shrink-0 text-sm font-semibold text-zinc-100">
-                      {formatCurrencyPrecise(item.amount)}
-                    </p>
-                  </div>
-
-                  {item._id && (
-                    <div className="mt-3 flex gap-2 border-t border-cardBorder pt-3">
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(item._id ?? null)}
-                        className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-cardBorder px-3.5 py-2 text-sm text-zinc-400 hover:text-zinc-200 lg:min-h-0 lg:gap-1.5 lg:py-1.5 lg:text-xs"
-                      >
-                        <Pencil className="h-4 w-4 lg:h-3.5 lg:w-3.5" />
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        disabled={deletingId === item._id}
-                        onClick={() => handleDelete(item._id!)}
-                        className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-neonCrimson/30 px-3.5 py-2 text-sm text-neonCrimson hover:bg-neonCrimson/10 disabled:opacity-60 lg:min-h-0 lg:gap-1.5 lg:py-1.5 lg:text-xs"
-                      >
-                        <Trash2 className="h-4 w-4 lg:h-3.5 lg:w-3.5" />
-                        {deletingId === item._id ? "Deleting..." : "Delete"}
-                      </button>
-                    </div>
-                  )}
+                  {formatCurrency(monthlyTotal)} this month · {expenses.length}{" "}
+                  {expenses.length === 1 ? "entry" : "entries"}
                 </>
               )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFilterOpen(true)}
+            disabled={isApplyingFilters}
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-neonViolet/30 bg-neonViolet/10 px-4 py-2.5 text-sm font-medium text-neonViolet transition-colors hover:bg-neonViolet/20 disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-0 lg:px-3 lg:py-2 lg:text-xs"
+          >
+            <Filter className="h-4 w-4 lg:h-3.5 lg:w-3.5" />
+            Filter
+          </button>
+        </div>
+
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+          {GROUP_FILTERS.map((filter) => {
+            const isActive =
+              appliedCategories.length === 0 && appliedGroup === filter.id;
+
+            return (
+              <button
+                key={filter.id}
+                type="button"
+                disabled={isApplyingFilters}
+                onClick={() => handleQuickGroup(filter.id)}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
+                  isActive
+                    ? "border-neonViolet/40 bg-neonViolet/15 text-neonViolet"
+                    : "border-cardBorder bg-background/50 text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                {filter.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <CategoryFilterModal
+          isOpen={filterOpen}
+          onClose={() => {
+            if (!isApplyingFilters) {
+              setFilterOpen(false);
+            }
+          }}
+          categoryNames={categoryNames}
+          appliedGroup={appliedGroup}
+          appliedCategories={appliedCategories}
+          onApply={handleApplyFilters}
+          isApplying={isApplyingFilters}
+        />
+
+        {deleteError && (
+          <p className="mb-4 rounded-xl border border-neonCrimson/30 bg-neonCrimson/10 px-4 py-3 text-sm text-neonCrimson">
+            {deleteError}
+          </p>
+        )}
+
+        {expenses.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-cardBorder bg-background/40 px-4 py-8 text-center text-sm text-zinc-500">
+            No expenses logged this month yet.
+          </div>
+        ) : filteredExpenses.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-cardBorder bg-background/40 px-4 py-8 text-center text-sm text-zinc-500">
+            No expenses match this filter.{" "}
+            <button
+              type="button"
+              onClick={handleClearFilter}
+              className="text-neonViolet hover:underline"
+            >
+              Clear filter
+            </button>
+          </div>
+        ) : (
+          <ul className="space-y-2 sm:space-y-3">
+            {filteredExpenses.map((item, index) => (
+              <li
+                key={item._id ?? `${item.category}-${item.amount}-${index}`}
+                className="rounded-2xl border border-cardBorder bg-background/70 px-3 py-3 sm:px-4"
+              >
+                {editingId === item._id ? (
+                  <ExpenseEditForm
+                    item={item}
+                    categoryNames={categoryNames}
+                    onCancel={() => setEditingId(null)}
+                    onSaved={handleSaved}
+                  />
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="inline-flex rounded-full border border-neonViolet/30 bg-neonViolet/10 px-2 py-0.5 text-[11px] font-medium text-neonViolet">
+                            {getChildCategoryName(item.category)}
+                          </span>
+                          <span className="text-xs text-zinc-500">
+                            {format(normalizeExpenseDate(item.date), "MMM d, yyyy")}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 line-clamp-2 text-sm text-zinc-300">
+                          {item.description.trim() || "No description"}
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-sm font-semibold tabular-nums text-zinc-100">
+                        {formatCurrencyPrecise(item.amount)}
+                      </p>
+                    </div>
+
+                    {item._id && (
+                      <div className="mt-3 flex gap-2 border-t border-cardBorder pt-3">
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(item._id ?? null)}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-cardBorder px-3 py-2 text-sm text-zinc-400 hover:text-zinc-200 lg:min-h-0 lg:gap-1.5 lg:py-1.5 lg:text-xs"
+                        >
+                          <Pencil className="h-4 w-4 lg:h-3.5 lg:w-3.5" />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deletingId === item._id}
+                          onClick={() => handleDelete(item._id!)}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-neonCrimson/30 px-3 py-2 text-sm text-neonCrimson hover:bg-neonCrimson/10 disabled:opacity-60 lg:min-h-0 lg:gap-1.5 lg:py-1.5 lg:text-xs"
+                        >
+                          <Trash2 className="h-4 w-4 lg:h-3.5 lg:w-3.5" />
+                          {deletingId === item._id ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }

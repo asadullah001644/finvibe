@@ -22,13 +22,11 @@ export default function CategoriesContent({
   budget,
   expenses,
 }: CategoriesContentProps) {
-  const categoryNames = budget.categories.map((category) => category.name);
-
   return (
     <CategoryExplorer
       monthKey={monthKey}
       expenses={expenses}
-      categoryNames={categoryNames}
+      categories={budget.categories}
     />
   );
 }
