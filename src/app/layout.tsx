@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import NavigationLoadingProvider from "@/components/NavigationLoadingProvider";
 import SupabaseSessionSync from "@/components/SupabaseSessionSync";
+import { APP_DESCRIPTION, APP_NAME } from "@/lib/branding";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FinVibe Engine",
-  description: "Personal capital engine with multi-user auth and budget telemetry",
+  title: APP_NAME,
+  description: APP_DESCRIPTION,
   manifest: "/manifest.json",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "FinVibe",
+    title: APP_NAME,
   },
 };
 

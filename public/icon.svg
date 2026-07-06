@@ -1,17 +1,47 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <rect width="512" height="512" rx="112" fill="#09090B"/>
   <path
-    d="M256 68 136 114v96c0 76.2 56.2 145.6 120 157.4 63.8-11.8 120-81.2 120-157.4v-96L256 68Z"
-    fill="#8B5CF6"
-    fill-opacity="0.18"
+    d="M168 128v256c0 18 10 32 24 36"
     stroke="#8B5CF6"
-    stroke-width="24"
+    stroke-width="22"
+    stroke-linecap="round"
+  />
+  <path
+    d="M168 128h128c32 0 56 24 56 56v184c0 32-24 56-56 56H168V128Z"
+    fill="#8B5CF6"
+    fill-opacity="0.14"
+    stroke="#8B5CF6"
+    stroke-width="22"
     stroke-linejoin="round"
   />
   <path
-    d="M204 262h104M256 210v104"
+    d="M296 128h32c32 0 56 24 56 56v184c0 32-24 56-56 56h-32"
+    fill="#8B5CF6"
+    fill-opacity="0.08"
     stroke="#8B5CF6"
-    stroke-width="24"
+    stroke-width="22"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M208 208h96M208 264h112M208 320h80"
+    stroke="#8B5CF6"
+    stroke-width="16"
+    stroke-linecap="round"
+    opacity="0.75"
+  />
+  <circle
+    cx="352"
+    cy="352"
+    r="36"
+    fill="#10B981"
+    fill-opacity="0.18"
+    stroke="#10B981"
+    stroke-width="16"
+  />
+  <path
+    d="M338 352h28M352 338v28"
+    stroke="#10B981"
+    stroke-width="14"
     stroke-linecap="round"
   />
 </svg>

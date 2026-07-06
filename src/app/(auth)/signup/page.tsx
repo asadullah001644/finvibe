@@ -11,6 +11,7 @@ import AuthShell, {
   AuthSuccess,
 } from "@/components/auth/AuthShell";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { APP_NAME } from "@/lib/branding";
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
@@ -44,7 +45,7 @@ export default function SignUpPage() {
   return (
     <AuthShell
       title="Create account"
-      subtitle="Start tracking your capital with FinVibe"
+      subtitle={`Start logging daily expenses with ${APP_NAME}`}
       footer={
         <>
           Already have an account? <AuthLink href="/login">Sign in</AuthLink>

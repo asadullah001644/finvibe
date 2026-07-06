@@ -1,7 +1,7 @@
 {
-  "name": "FinVibe Engine",
-  "short_name": "FinVibe",
-  "description": "Premium Single-Tenant Personal Capital Engine",
+  "name": "Expense Diary",
+  "short_name": "Expense Diary",
+  "description": "Your daily expense journal with budget tracking and spending insights",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090B",

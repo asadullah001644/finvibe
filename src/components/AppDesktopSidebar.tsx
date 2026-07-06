@@ -10,6 +10,7 @@ import {
   Sparkles,
   Tags,
 } from "lucide-react";
+import AppLogo from "@/components/AppLogo";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import {
   APP_TABS,
@@ -45,19 +46,13 @@ export default function AppDesktopSidebar({
   const initial = resolveDisplayInitial(userDisplayName);
 
   return (
-    <aside className="hidden lg:flex lg:w-72 lg:shrink-0 lg:flex-col lg:border-r lg:border-cardBorder/80 lg:bg-[#0C0C0F]/90 lg:backdrop-blur-xl">
-      <div className="flex h-full flex-col px-5 py-6">
-        <div className="flex items-center gap-3 px-1">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-neonViolet/30 bg-neonViolet/10">
-            <Shield className="h-5 w-5 text-neonViolet" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold tracking-[0.12em] text-zinc-100">FinVibe</p>
-            <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">Capital Engine</p>
-          </div>
+    <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:max-h-screen lg:w-72 lg:shrink-0 lg:self-start lg:flex-col lg:border-r lg:border-cardBorder/80 lg:bg-[#0C0C0F]/90 lg:backdrop-blur-xl">
+      <div className="flex min-h-0 flex-1 flex-col px-5 py-6">
+        <div className="shrink-0 px-1">
+          <AppLogo showText size="md" />
         </div>
 
-        <div className="mt-8 rounded-2xl border border-cardBorder/80 bg-card/40 p-4">
+        <div className="mt-8 shrink-0 rounded-2xl border border-cardBorder/80 bg-card/40 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-neonViolet/30 bg-neonViolet/10 text-sm font-semibold text-neonViolet">
               {initial}
@@ -69,7 +64,10 @@ export default function AppDesktopSidebar({
           </div>
         </div>
 
-        <nav aria-label="Desktop navigation" className="mt-8 flex-1 space-y-1">
+        <nav
+          aria-label="Desktop navigation"
+          className="mt-8 min-h-0 flex-1 space-y-1 overflow-y-auto"
+        >
           {APP_TABS.map((tab) => {
             const Icon = TAB_ICONS[tab.id];
             const href = buildMonthUrl(tab.href, currentMonthKey);
@@ -99,7 +97,7 @@ export default function AppDesktopSidebar({
           })}
         </nav>
 
-        <div className="mt-auto space-y-1 border-t border-cardBorder/60 pt-5">
+        <div className="mt-4 shrink-0 space-y-1 border-t border-cardBorder/60 pt-5">
           <Link
             href="/settings"
             prefetch

@@ -9,6 +9,7 @@ import {
   AUTH_MESSAGES,
   getAuthQueryError,
 } from "@/lib/authErrors";
+import { APP_NAME } from "@/lib/branding";
 import AuthShell, {
   AuthError,
   AuthField,
@@ -88,7 +89,7 @@ export default function LoginPageClient() {
   return (
     <AuthShell
       title="Welcome back"
-      subtitle="Sign in to your FinVibe account"
+      subtitle={`Sign in to your ${APP_NAME} account`}
       footer={
         <>
           No account yet? <AuthLink href="/signup">Create one</AuthLink>

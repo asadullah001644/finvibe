@@ -1,6 +1,7 @@
 "use client";
 
-import { Wallet } from "lucide-react";
+import AppLogo from "@/components/AppLogo";
+import { APP_NAME } from "@/lib/branding";
 
 interface SetupHeroProps {
   onSetup: () => void;
@@ -10,11 +11,11 @@ export default function SetupHero({ onSetup }: SetupHeroProps) {
   return (
     <section className="rounded-2xl border border-neonViolet/25 bg-gradient-to-br from-neonViolet/10 via-card/40 to-card/20 p-6 sm:p-8">
       <div className="mx-auto max-w-xl text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-neonViolet/30 bg-neonViolet/10">
-          <Wallet className="h-6 w-6 text-neonViolet" />
+        <div className="mx-auto mb-4 flex justify-center">
+          <AppLogo size="lg" />
         </div>
         <h2 className="text-lg font-semibold text-zinc-100">
-          Welcome to FinVibe
+          Welcome to {APP_NAME}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
           Set your salary and savings goal for this month — takes 30 seconds.

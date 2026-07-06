@@ -1,17 +1,47 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
   <rect width="180" height="180" rx="40" fill="#09090B"/>
   <path
-    d="M90 24 48 40v34c0 27 19.8 51.6 42 55.8 22.2-4.2 42-28.8 42-55.8V40L90 24Z"
+    d="M59 45v90c0 6.3 3.5 11.3 8.4 12.7"
+    stroke="#8B5CF6"
+    stroke-width="8"
+    stroke-linecap="round"
+  />
+  <path
+    d="M59 45h45c11.3 0 19.7 8.4 19.7 19.7v64.6c0 11.3-8.4 19.7-19.7 19.7H59V45Z"
     fill="#8B5CF6"
-    fill-opacity="0.18"
+    fill-opacity="0.14"
     stroke="#8B5CF6"
     stroke-width="8"
     stroke-linejoin="round"
   />
   <path
-    d="M72 92h36M90 74v36"
+    d="M104 45h11.3c11.3 0 19.7 8.4 19.7 19.7v64.6c0 11.3-8.4 19.7-19.7 19.7H104"
+    fill="#8B5CF6"
+    fill-opacity="0.08"
     stroke="#8B5CF6"
     stroke-width="8"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M73 73h34M73 93h40M73 113h28"
+    stroke="#8B5CF6"
+    stroke-width="5.5"
+    stroke-linecap="round"
+    opacity="0.75"
+  />
+  <circle
+    cx="124"
+    cy="124"
+    r="12.7"
+    fill="#10B981"
+    fill-opacity="0.18"
+    stroke="#10B981"
+    stroke-width="5.5"
+  />
+  <path
+    d="M119 124h10M124 119v10"
+    stroke="#10B981"
+    stroke-width="4.5"
     stroke-linecap="round"
   />
 </svg>

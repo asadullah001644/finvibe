@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import AppLogo from "@/components/AppLogo";
+import { APP_NAME, APP_TAGLINE } from "@/lib/branding";
 
 interface AuthShellProps {
   title: string;
@@ -17,10 +19,14 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
 
       <div className="relative w-full max-w-md">
         <div className="mb-8 text-center">
-          <p className="text-xs font-medium uppercase tracking-[0.35em] text-[#8B5CF6]/80">
-            FinVibe
-          </p>
-          <h1 className="mt-3 text-2xl font-semibold text-zinc-100">{title}</h1>
+          <div className="mx-auto flex w-fit flex-col items-center">
+            <AppLogo size="lg" />
+            <p className="mt-4 text-xs font-medium uppercase tracking-[0.28em] text-[#8B5CF6]/80">
+              {APP_NAME}
+            </p>
+            <p className="mt-1 text-[11px] text-zinc-500">{APP_TAGLINE}</p>
+          </div>
+          <h1 className="mt-6 text-2xl font-semibold text-zinc-100">{title}</h1>
           <p className="mt-2 text-sm text-zinc-500">{subtitle}</p>
         </div>
 
