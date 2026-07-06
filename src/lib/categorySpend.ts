@@ -31,14 +31,10 @@ export function sumExpenses(expenses: CategoryExpense[]): number {
   return expenses.reduce((sum, expense) => sum + expense.amount, 0);
 }
 
-export function formatShareOfMonthLabel(shareOfMonth: number): string {
-  return `${shareOfMonth}% of total spending`;
-}
-
 export interface CategoryRowCaption {
   primary: string;
-  secondary?: string;
   isOver: boolean;
+  atLimit?: boolean;
 }
 
 export function getCategoryBarFillPercent(row: {
@@ -53,30 +49,47 @@ export function getCategoryBarFillPercent(row: {
   return Math.min(row.shareOfMonth, 100);
 }
 
-export function formatCategoryRowCaption(row: {
-  spent: number;
-  allocated: number;
-  shareOfMonth: number;
-  isOver: boolean;
-}): CategoryRowCaption {
+export function formatCategoryRowCaption(
+  row: {
+    spent: number;
+    allocated: number;
+    shareOfMonth: number;
+    isOver: boolean;
+  },
+  totalSpent: number,
+): CategoryRowCaption {
   if (row.allocated > 0) {
     if (row.isOver) {
       return {
         primary: `${formatCurrency(row.spent - row.allocated)} over limit`,
-        secondary: `${formatCurrency(row.spent)} spent · ${formatCurrency(row.allocated)} limit`,
         isOver: true,
       };
     }
 
+    const remaining = row.allocated - row.spent;
+    if (remaining === 0) {
+      return {
+        primary: "At limit",
+        isOver: false,
+        atLimit: true,
+      };
+    }
+
     return {
-      primary: `${formatCurrency(row.spent)} of ${formatCurrency(row.allocated)} limit`,
-      secondary: formatShareOfMonthLabel(row.shareOfMonth),
+      primary: `${formatCurrency(remaining)} left`,
+      isOver: false,
+    };
+  }
+
+  if (totalSpent <= 0) {
+    return {
+      primary: formatCurrency(row.spent),
       isOver: false,
     };
   }
 
   return {
-    primary: formatShareOfMonthLabel(row.shareOfMonth),
+    primary: `${formatCurrency(row.spent)} of ${formatCurrency(totalSpent)} total`,
     isOver: false,
   };
 }
@@ -285,25 +298,47 @@ export function countActiveCategories(groups: CategoryGroupRow[]): number {
   return flattenCategoryRows(groups).filter((row) => row.spent > 0).length;
 }
 
+export function getAtOrOverLimitRows(rows: CategoryRow[]): CategoryRow[] {
+  return sortRowsBySpend(
+    rows.filter(
+      (row) =>
+        row.isOver ||
+        (row.allocated > 0 && row.spent >= row.allocated),
+    ),
+  );
+}
+
+export function formatLimitRowAmount(row: CategoryRow): string {
+  const amounts = `${formatCurrency(row.spent)} / ${formatCurrency(row.allocated)}`;
+  if (row.isOver) {
+    return amounts;
+  }
+
+  return `${amounts} · At limit`;
+}
+
 export function getOverviewCategoryHighlights(
   categories: BudgetCategory[],
   expenses: CategoryExpense[],
-  topCount = 5,
+  topCount = 3,
 ): {
   topSpenders: CategoryRow[];
-  overBudget: CategoryRow[];
+  atOrOverLimit: CategoryRow[];
   totalSpent: number;
   hasLimitsSet: boolean;
 } {
   const { groups, totalSpent } = buildGroupedCategoryRows(categories, expenses);
   const allRows = flattenCategoryRows(groups).filter((row) => row.spent > 0);
-  const overBudget = sortRowsBySpend(allRows.filter((row) => row.isOver));
-  const topSpenders = sortRowsBySpend(allRows).slice(0, topCount);
+  const atOrOverLimit = getAtOrOverLimitRows(allRows);
+  const limitNames = new Set(atOrOverLimit.map((row) => row.name));
+  const topSpenders = sortRowsBySpend(allRows)
+    .filter((row) => !limitNames.has(row.name))
+    .slice(0, topCount);
   const hasLimitsSet = categories.some((category) => category.allocated > 0);
 
   return {
     topSpenders,
-    overBudget,
+    atOrOverLimit,
     totalSpent,
     hasLimitsSet,
   };

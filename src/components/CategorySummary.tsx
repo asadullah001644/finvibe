@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { useAppShellActions } from "@/components/AppShellProvider";
 import { formatCurrency } from "@/lib/currency";
 import {
-  formatCategoryRowCaption,
-  getCategoryBarFillPercent,
+  formatLimitRowAmount,
   getOverviewCategoryHighlights,
   type CategoryExpense,
+  type CategoryRow,
 } from "@/lib/categorySpend";
 import { buildCategoriesUrl } from "@/lib/navigation";
 import type { BudgetCategory } from "@/lib/types";
@@ -20,75 +20,40 @@ interface CategorySummaryProps {
   onOpenCategories?: () => void;
 }
 
-function SummaryRow({
-  row,
-  monthKey,
-}: {
-  row: {
-    name: string;
-    displayName: string;
-    spent: number;
-    allocated: number;
-    isOver: boolean;
-    shareOfMonth: number;
-    percent: number | null;
-  };
-  monthKey: string;
-}) {
-  const fillPercent = getCategoryBarFillPercent(row);
-  const caption = formatCategoryRowCaption(row);
-  const hasLimit = row.allocated > 0;
+const rowLinkClass =
+  "group flex items-center justify-between gap-3 rounded-xl border border-transparent px-2 py-2.5 transition-colors hover:border-cardBorder hover:bg-background/50";
 
+function LimitRow({ row, monthKey }: { row: CategoryRow; monthKey: string }) {
   return (
     <li>
       <Link
         href={buildCategoriesUrl(monthKey, { category: row.name })}
-        className="group block rounded-xl border border-transparent px-2 py-2 transition-colors hover:border-cardBorder hover:bg-background/50"
+        className={rowLinkClass}
       >
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-sm font-medium text-zinc-200 group-hover:text-neonViolet">
-              {row.displayName}
-            </span>
-            {row.isOver && (
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-neonCrimson" />
-            )}
-          </div>
-          <span
-            className={`shrink-0 text-sm font-semibold ${
-              row.isOver ? "text-neonCrimson" : "text-zinc-300"
-            }`}
-          >
-            {formatCurrency(row.spent)}
-            {hasLimit && (
-              <span className="font-normal text-zinc-500">
-                {" "}
-                / {formatCurrency(row.allocated)}
-              </span>
-            )}
-          </span>
-        </div>
+        <span className="truncate text-sm font-medium text-zinc-200 group-hover:text-neonViolet">
+          {row.displayName}
+        </span>
+        <span className="shrink-0 text-right text-sm font-semibold text-zinc-300">
+          {formatLimitRowAmount(row)}
+        </span>
+      </Link>
+    </li>
+  );
+}
 
-        <div className="h-1.5 overflow-hidden rounded-full bg-background">
-          <div
-            className={`h-full rounded-full transition-all ${
-              row.isOver ? "bg-neonCrimson" : "bg-neonEmerald"
-            }`}
-            style={{ width: `${fillPercent}%` }}
-          />
-        </div>
-
-        <p className="mt-1 text-xs">
-          <span className={caption.isOver ? "font-medium text-neonCrimson" : "text-zinc-400"}>
-            {caption.primary}
-          </span>
-          {caption.secondary && (
-            <span className="text-zinc-500">
-              {" "}
-              · {caption.secondary}
-            </span>
-          )}
-        </p>
+function TopSpendRow({ row, monthKey }: { row: CategoryRow; monthKey: string }) {
+  return (
+    <li>
+      <Link
+        href={buildCategoriesUrl(monthKey, { category: row.name })}
+        className={rowLinkClass}
+      >
+        <span className="truncate text-sm font-medium text-zinc-200 group-hover:text-neonViolet">
+          {row.displayName}
+        </span>
+        <span className="shrink-0 text-sm font-semibold text-zinc-300">
+          {formatCurrency(row.spent)}
+        </span>
       </Link>
     </li>
   );
@@ -104,13 +69,8 @@ export default function CategorySummary({
   const isOpeningCategories = pendingModalAction === "categories";
   const handleOpenCategories = onOpenCategories ?? openCategories;
 
-  const { topSpenders, overBudget, totalSpent, hasLimitsSet } =
+  const { topSpenders, atOrOverLimit, totalSpent, hasLimitsSet } =
     getOverviewCategoryHighlights(categories, expenses);
-
-  const overBudgetNames = new Set(overBudget.map((row) => row.name));
-  const topWithoutDuplicates = topSpenders.filter(
-    (row) => !overBudgetNames.has(row.name),
-  );
 
   if (totalSpent === 0 && !onOpenCategories) {
     return null;
@@ -121,17 +81,17 @@ export default function CategorySummary({
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonEmerald/80">
-            Spending Snapshot
+            This month
           </p>
           <p className="mt-1 text-sm text-zinc-500">
-            Share of this month&apos;s spending — tap a category for details
+            Tap a category for details
           </p>
         </div>
         <Link
           href={buildCategoriesUrl(monthKey)}
           className="inline-flex items-center gap-1 rounded-lg border border-neonEmerald/30 bg-neonEmerald/10 px-3 py-1.5 text-xs font-medium text-neonEmerald transition-colors hover:bg-neonEmerald/20"
         >
-          Browse expenses
+          View all
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
@@ -158,27 +118,27 @@ export default function CategorySummary({
         </div>
       ) : (
         <div className="space-y-5">
-          {overBudget.length > 0 && (
+          {atOrOverLimit.length > 0 && (
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-neonCrimson/90">
-                Over budget
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Category limits
               </p>
-              <ul className="space-y-1">
-                {overBudget.map((row) => (
-                  <SummaryRow key={row.name} row={row} monthKey={monthKey} />
+              <ul className="space-y-0.5">
+                {atOrOverLimit.map((row) => (
+                  <LimitRow key={row.name} row={row} monthKey={monthKey} />
                 ))}
               </ul>
             </div>
           )}
 
-          {topWithoutDuplicates.length > 0 && (
+          {topSpenders.length > 0 && (
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                {overBudget.length > 0 ? "Also spending most" : "Top spending"}
+                Top spending
               </p>
-              <ul className="space-y-1">
-                {topWithoutDuplicates.map((row) => (
-                  <SummaryRow key={row.name} row={row} monthKey={monthKey} />
+              <ul className="space-y-0.5">
+                {topSpenders.map((row) => (
+                  <TopSpendRow key={row.name} row={row} monthKey={monthKey} />
                 ))}
               </ul>
             </div>

@@ -35,23 +35,28 @@ interface CategoryBreakdownModalProps {
   onCategorySelect?: (categoryName: string) => void;
 }
 
-function rowSubtext(row: CategoryRow): CategoryRowCaption | null {
+function rowSubtext(
+  row: CategoryRow,
+  totalSpent: number,
+): CategoryRowCaption | null {
   if (row.spent <= 0) {
     return null;
   }
 
-  return formatCategoryRowCaption(row);
+  return formatCategoryRowCaption(row, totalSpent);
 }
 
 function BreakdownRow({
   row,
+  totalSpent,
   onCategorySelect,
 }: {
   row: CategoryRow;
+  totalSpent: number;
   onCategorySelect?: (categoryName: string) => void;
 }) {
   const fillPercent = getCategoryBarFillPercent(row);
-  const caption = rowSubtext(row);
+  const caption = rowSubtext(row, totalSpent);
 
   return (
     <li className={row.isChild ? "ml-3 border-l border-cardBorder pl-3" : ""}>
@@ -101,17 +106,18 @@ function BreakdownRow({
       )}
 
       {caption && (
-        <p className="mt-1 text-sm">
-          <span
-            className={
-              caption.isOver ? "font-medium text-neonCrimson" : "text-zinc-400"
-            }
-          >
-            {caption.primary}
-          </span>
-          {caption.secondary && (
-            <span className="text-zinc-500"> · {caption.secondary}</span>
-          )}
+        <p
+          className={`mt-1 text-sm font-medium ${
+            caption.isOver
+              ? "text-neonCrimson"
+              : caption.atLimit
+                ? "text-amber-400/90"
+                : row.allocated > 0
+                  ? "text-neonEmerald/90"
+                  : "text-zinc-500"
+          }`}
+        >
+          {caption.primary}
         </p>
       )}
     </li>
@@ -194,6 +200,7 @@ function BreakdownList({
               <BreakdownRow
                 key={row.name}
                 row={row}
+                totalSpent={totalSpent}
                 onCategorySelect={onCategorySelect}
               />
             ))}
