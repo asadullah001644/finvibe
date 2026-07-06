@@ -46,7 +46,6 @@ export interface AppShellMonthData {
 interface AppShellActions {
   openIncome: () => void;
   openCategories: () => void;
-  openRecurring: () => void;
   pendingModalAction: ModalAction | null;
 }
 
@@ -133,16 +132,15 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
   const [monthData, setMonthData] = useState<AppShellMonthData | null>(null);
   const [incomeOpen, setIncomeOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
-  const [recurringOpen, setRecurringOpen] = useState(false);
   const [pendingModalAction, setPendingModalAction] = useState<ModalAction | null>(
     null,
   );
 
   useEffect(() => {
-    if (incomeOpen || categoriesOpen || recurringOpen) {
+    if (incomeOpen || categoriesOpen) {
       setPendingModalAction(null);
     }
-  }, [incomeOpen, categoriesOpen, recurringOpen]);
+  }, [incomeOpen, categoriesOpen]);
 
   const syncMonthData = useCallback((data: AppShellMonthData) => {
     setMonthData((current) => {
@@ -162,7 +160,6 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
     });
     setIncomeOpen(false);
     setCategoriesOpen(false);
-    setRecurringOpen(false);
   }, []);
 
   const controlValue = useMemo(
@@ -179,10 +176,6 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
       openCategories: () => {
         setPendingModalAction("categories");
         setCategoriesOpen(true);
-      },
-      openRecurring: () => {
-        setPendingModalAction("recurring");
-        setRecurringOpen(true);
       },
       pendingModalAction,
     }),
@@ -230,10 +223,8 @@ export default function AppShellProvider({ children }: { children: ReactNode }) 
                 hasLimitsSet={hasLimitsSet}
                 incomeOpen={incomeOpen}
                 categoriesOpen={categoriesOpen}
-                recurringOpen={recurringOpen}
                 onIncomeOpenChange={setIncomeOpen}
                 onCategoriesOpenChange={setCategoriesOpen}
-                onRecurringOpenChange={setRecurringOpen}
                 pinLockEnabled={monthData.pinLockEnabled ?? false}
                 isSuperAdmin={monthData.isSuperAdmin}
               />

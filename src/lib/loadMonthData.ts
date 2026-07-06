@@ -1,10 +1,6 @@
 import { cache } from "react";
 import { format } from "date-fns";
-import {
-  ensureMonthBudget,
-  getExpensesForMonth,
-  seedRecurringExpensesForMonth,
-} from "@/actions/dbActions";
+import { ensureMonthBudget, getExpensesForMonth } from "@/actions/dbActions";
 import { DEFAULT_CATEGORIES } from "@/lib/constants";
 import { formatMonthLabel, monthKeyToDate } from "@/lib/month";
 import type { BudgetCategory } from "@/lib/types";
@@ -34,10 +30,6 @@ export interface MonthShellData {
 export interface MonthData extends MonthShellData {
   expenses: MonthExpense[];
 }
-
-const seedRecurringForMonthCached = cache((monthKey: string) =>
-  seedRecurringExpensesForMonth(monthKey, { revalidate: false }),
-);
 
 async function loadMonthShellDataImpl(monthKey: string): Promise<MonthShellData> {
   const monthLabel = format(monthKeyToDate(monthKey), "MMMM yyyy");
@@ -82,8 +74,6 @@ async function loadMonthShellDataImpl(monthKey: string): Promise<MonthShellData>
 
 async function loadMonthExpensesImpl(monthKey: string): Promise<MonthExpense[]> {
   try {
-    await seedRecurringForMonthCached(monthKey);
-
     const loadedExpenses = await getExpensesForMonth(monthKey);
     return Array.isArray(loadedExpenses) ? loadedExpenses : [];
   } catch (error) {

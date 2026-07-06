@@ -36,7 +36,6 @@ interface AppMobileDrawerProps {
   pinLockEnabled: boolean;
   onOpenIncome: () => void;
   onOpenCategories: () => void;
-  onOpenRecurring: () => void;
   pendingModalAction?: ModalAction | null;
   onMonthChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
@@ -54,7 +53,6 @@ export default function AppMobileDrawer({
   pinLockEnabled,
   onOpenIncome,
   onOpenCategories,
-  onOpenRecurring,
   pendingModalAction = null,
   onMonthChange,
 }: AppMobileDrawerProps) {
@@ -98,11 +96,6 @@ export default function AppMobileDrawer({
   const openCategories = () => {
     onClose();
     onOpenCategories();
-  };
-
-  const openRecurring = () => {
-    onClose();
-    onOpenRecurring();
   };
 
   const drawer = (
@@ -232,7 +225,6 @@ export default function AppMobileDrawer({
                     loadingAction={pendingModalAction}
                     onOpenIncome={openIncome}
                     onOpenCategories={openCategories}
-                    onOpenRecurring={openRecurring}
                   />
                 </div>
               </div>

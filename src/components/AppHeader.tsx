@@ -11,7 +11,6 @@ import LockButton from "@/components/LockButton";
 import SignOutButton from "@/components/SignOutButton";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { useAppShellActions } from "@/components/AppShellProvider";
-import RecurringExpensesSettings from "@/components/RecurringExpensesSettings";
 import { APP_TABS, buildMonthUrl, getActiveTabFromPathname } from "@/lib/navigation";
 import { APP_NAME } from "@/lib/branding";
 import type { BudgetCategory } from "@/lib/types";
@@ -31,10 +30,8 @@ interface AppHeaderProps {
   hasLimitsSet: boolean;
   incomeOpen: boolean;
   categoriesOpen: boolean;
-  recurringOpen: boolean;
   onIncomeOpenChange: (open: boolean) => void;
   onCategoriesOpenChange: (open: boolean) => void;
-  onRecurringOpenChange: (open: boolean) => void;
   pinLockEnabled?: boolean;
 }
 
@@ -88,14 +85,12 @@ export default function AppHeader({
   hasLimitsSet,
   incomeOpen,
   categoriesOpen,
-  recurringOpen,
   onIncomeOpenChange,
   onCategoriesOpenChange,
-  onRecurringOpenChange,
   pinLockEnabled = false,
 }: AppHeaderProps) {
   const { navigate } = useAppNavigation();
-  const { openIncome, openCategories, openRecurring, pendingModalAction } =
+  const { openIncome, openCategories, pendingModalAction } =
     useAppShellActions();
   const pathname = usePathname();
   const desktopMonthInputRef = useRef<HTMLInputElement>(null);
@@ -132,10 +127,8 @@ export default function AppHeader({
     hasLimitsSet,
     incomeOpen,
     categoriesOpen,
-    recurringOpen,
     onIncomeOpenChange,
     onCategoriesOpenChange,
-    onRecurringOpenChange,
   };
 
   return (
@@ -159,11 +152,6 @@ export default function AppHeader({
         isOpen={categoriesOpen}
         onOpenChange={onCategoriesOpenChange}
         hasLimitsSet={hasLimitsSet}
-        showTrigger={false}
-      />
-      <RecurringExpensesSettings
-        isOpen={recurringOpen}
-        onOpenChange={onRecurringOpenChange}
         showTrigger={false}
       />
 
@@ -197,7 +185,6 @@ export default function AppHeader({
               loadingAction={pendingModalAction}
               onOpenIncome={openIncome}
               onOpenCategories={openCategories}
-              onOpenRecurring={openRecurring}
             />
             <MonthPicker
               id="app-header-month-desktop"
@@ -226,7 +213,6 @@ export default function AppHeader({
         pinLockEnabled={pinLockEnabled}
         onOpenIncome={openIncome}
         onOpenCategories={openCategories}
-        onOpenRecurring={openRecurring}
         pendingModalAction={pendingModalAction}
         onMonthChange={handleMonthChange}
       />

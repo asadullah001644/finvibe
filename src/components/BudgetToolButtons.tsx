@@ -1,12 +1,11 @@
 "use client";
 
-import { LayoutList, Loader2, Repeat, Wallet } from "lucide-react";
+import { LayoutList, Loader2, Wallet } from "lucide-react";
 import type { ModalAction } from "@/lib/modalActions";
 
 interface BudgetToolButtonsProps {
   onOpenIncome: () => void;
   onOpenCategories: () => void;
-  onOpenRecurring: () => void;
   hasLimitsSet: boolean;
   layout?: "inline" | "drawer";
   loadingAction?: ModalAction | null;
@@ -15,7 +14,6 @@ interface BudgetToolButtonsProps {
 export default function BudgetToolButtons({
   onOpenIncome,
   onOpenCategories,
-  onOpenRecurring,
   hasLimitsSet,
   layout = "inline",
   loadingAction = null,
@@ -60,16 +58,6 @@ export default function BudgetToolButtons({
         {!hasLimitsSet && loadingAction !== "categories" && (
           <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-neonViolet shadow-[0_0_8px_rgba(139,92,246,0.8)]" />
         )}
-      </button>
-      <button
-        type="button"
-        onClick={onOpenRecurring}
-        disabled={loadingAction === "recurring"}
-        aria-busy={loadingAction === "recurring"}
-        className={`${baseClass} hover:border-neonViolet/40 hover:text-zinc-100`}
-      >
-        {renderIcon("recurring", <Repeat className="h-4 w-4 shrink-0 text-neonViolet" />)}
-        Recurring
       </button>
     </>
   );

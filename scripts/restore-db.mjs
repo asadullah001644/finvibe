@@ -3,7 +3,7 @@
  * Restore FinVibe tables from a local backup folder.
  * Usage: node scripts/restore-db.mjs backups/2026-07-05T22-55-00
  *
- * WARNING: Clears and re-inserts budgets, expenses, recurring_expenses.
+ * WARNING: Clears and re-inserts budgets and expenses.
  * Only use for emergency rollback before multi-user lockdown, or on empty tables.
  */
 import { createClient } from "@supabase/supabase-js";
@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
-const TABLES = ["recurring_expenses", "expenses", "budgets"];
+const TABLES = ["expenses", "budgets"];
 
 function loadEnvLocal() {
   const envPath = path.join(ROOT, ".env.local");

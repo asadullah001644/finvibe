@@ -1,1 +1,1 @@
-export type ModalAction = "income" | "categories" | "recurring";
+export type ModalAction = "income" | "categories";

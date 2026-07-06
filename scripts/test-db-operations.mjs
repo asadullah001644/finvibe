@@ -54,7 +54,7 @@ function warn(name, detail = "") {
 async function probeSchema(supabase) {
   const probes = {};
 
-  for (const table of ["budgets", "expenses", "recurring_expenses", "profiles"]) {
+  for (const table of ["budgets", "expenses", "profiles"]) {
     const { error } = await supabase.from(table).select("*").limit(1);
     probes[table] = error
       ? { exists: false, error: error.message, code: error.code }
@@ -80,10 +80,6 @@ async function probeSchema(supabase) {
 async function cleanupTestData(supabase) {
   await supabase.from("expenses").delete().gte("date", "2099-01-01").lte("date", "2099-12-31");
   await supabase.from("budgets").delete().in("month_key", [TEST_MONTH, TEST_MONTH_2]);
-  await supabase
-    .from("recurring_expenses")
-    .delete()
-    .ilike("description", "[TEST]%");
 }
 
 async function runBudgetTests(supabase, hasUserId) {
@@ -259,57 +255,6 @@ async function runExpenseTests(supabase) {
   pass("expenses DELETE verified");
 }
 
-async function runRecurringTests(supabase, schema) {
-  if (!schema.recurring_expenses?.exists) {
-    pass("recurring_expenses SKIPPED", "table not deployed");
-    return;
-  }
-
-  let recurringId;
-
-  const { data: created, error: createErr } = await supabase
-    .from("recurring_expenses")
-    .insert({
-      amount: 5000,
-      category: "Flat › Rent",
-      description: "[TEST] monthly rent",
-      is_active: true,
-    })
-    .select("id, amount, category, is_active")
-    .single();
-
-  if (createErr) throw new Error(`recurring insert: ${createErr.message}`);
-  recurringId = created.id;
-  pass("recurring_expenses INSERT");
-
-  const { error: updateErr } = await supabase
-    .from("recurring_expenses")
-    .update({ amount: 5500, is_active: false })
-    .eq("id", recurringId);
-
-  if (updateErr) throw new Error(`recurring update: ${updateErr.message}`);
-  pass("recurring_expenses UPDATE");
-
-  const { data: list, error: listErr } = await supabase
-    .from("recurring_expenses")
-    .select("id, amount, is_active")
-    .eq("id", recurringId)
-    .single();
-
-  if (listErr || Number(list.amount) !== 5500) {
-    throw new Error("recurring select failed");
-  }
-  pass("recurring_expenses SELECT");
-
-  const { error: deleteErr } = await supabase
-    .from("recurring_expenses")
-    .delete()
-    .eq("id", recurringId);
-
-  if (deleteErr) throw new Error(`recurring delete: ${deleteErr.message}`);
-  pass("recurring_expenses DELETE");
-}
-
 async function runLiveDataIntegrity(supabase, schema) {
   const backupManifest = (() => {
     try {
@@ -435,14 +380,7 @@ async function main() {
     fail("expense CRUD suite", error.message);
   }
 
-  console.log("\n6) Recurring expense CRUD");
-  try {
-    await runRecurringTests(client, schema);
-  } catch (error) {
-    fail("recurring CRUD suite", error.message);
-  }
-
-  console.log("\n7) Constraint & edge cases");
+  console.log("\n6) Constraint & edge cases");
   try {
     const { error: dupErr } = await client.from("budgets").insert({
       month_key: TEST_MONTH,
@@ -501,7 +439,7 @@ async function main() {
     fail("constraint/edge cases", error.message);
   }
 
-  console.log("\n8) Cleanup test data");
+  console.log("\n7) Cleanup test data");
   try {
     await cleanupTestData(client);
     pass("test data cleanup");

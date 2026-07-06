@@ -39,7 +39,7 @@ function loadEnvLocal() {
   }
 }
 
-const TABLES = ["budgets", "expenses", "recurring_expenses"];
+const TABLES = ["budgets", "expenses"];
 
 async function fetchAll(supabase, table) {
   const pageSize = 1000;

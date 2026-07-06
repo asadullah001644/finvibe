@@ -3,13 +3,9 @@
 import {
   addExpense,
   deleteExpense,
-  deleteRecurringExpense,
   ensureMonthBudget,
   getExpensesForMonth,
   getMostRecentPriorBudget,
-  getRecurringExpenses,
-  saveRecurringExpense,
-  seedRecurringExpensesForMonth,
   updateBudgetIncome,
   updateCategoryAllocations,
   updateExpense,
@@ -17,7 +13,7 @@ import {
 import { DEFAULT_CATEGORIES } from "@/lib/constants";
 import { isValidExpenseId, parseExpenseDate } from "@/lib/expenseDate";
 import { actionSessionError, isActionSessionValid } from "@/lib/sessionGuard";
-import type { Budget, BudgetCategory, RecurringExpense, SerializedExpense } from "@/lib/types";
+import type { Budget, BudgetCategory, SerializedExpense } from "@/lib/types";
 
 export interface ExpenseInput {
   amount: number;
@@ -35,14 +31,6 @@ export interface IncomeInput {
 export interface CategoryAllocationsInput {
   monthKey: string;
   categories: BudgetCategory[];
-}
-
-export interface RecurringExpenseInput {
-  id?: string;
-  amount: number;
-  category: string;
-  description: string;
-  isActive: boolean;
 }
 
 export interface EnsureMonthBudgetActionResult {
@@ -239,20 +227,6 @@ export async function ensureMonthBudgetAction(
   }
 }
 
-export async function seedRecurringExpensesForMonthAction(
-  monthKey: string,
-): Promise<void> {
-  try {
-    if (!(await hasValidSession())) {
-      return;
-    }
-
-    await seedRecurringExpensesForMonth(monthKey);
-  } catch (error) {
-    console.error("seedRecurringExpensesForMonthAction:", error);
-  }
-}
-
 export async function getOrCreateMonthlyBudgetAction(
   monthKey: string,
 ): Promise<Budget> {
@@ -287,68 +261,5 @@ export async function getPriorMonthBudgetAction(
   } catch (error) {
     console.error("getPriorMonthBudgetAction:", error);
     return null;
-  }
-}
-
-export async function getRecurringExpensesAction(): Promise<RecurringExpense[]> {
-  try {
-    if (!(await hasValidSession())) {
-      return [];
-    }
-
-    return await getRecurringExpenses();
-  } catch (error) {
-    console.error("getRecurringExpensesAction:", error);
-    return [];
-  }
-}
-
-export async function saveRecurringExpenseAction(
-  input: RecurringExpenseInput,
-): Promise<ActionResult & { item?: RecurringExpense }> {
-  if (!(await hasValidSession())) {
-    return sessionError();
-  }
-
-  const { id, amount, category, description, isActive } = input;
-
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return { success: false, error: "Enter a valid amount greater than zero." };
-  }
-
-  if (!category.trim()) {
-    return { success: false, error: "Select a category to continue." };
-  }
-
-  try {
-    const item = await saveRecurringExpense({
-      id,
-      amount,
-      category: category.trim(),
-      description: description.trim(),
-      isActive,
-    });
-    return { success: true, item };
-  } catch (error) {
-    return actionError(error, "Could not save recurring expense.");
-  }
-}
-
-export async function deleteRecurringExpenseAction(
-  id: string,
-): Promise<ActionResult> {
-  if (!(await hasValidSession())) {
-    return sessionError();
-  }
-
-  if (!isValidExpenseId(id)) {
-    return { success: false, error: "Invalid recurring expense id." };
-  }
-
-  try {
-    await deleteRecurringExpense(id);
-    return { success: true };
-  } catch (error) {
-    return actionError(error, "Could not delete recurring expense.");
   }
 }

@@ -32,14 +32,6 @@ export interface SerializedExpense {
   createdAt?: Date;
 }
 
-export interface RecurringExpense {
-  id: string;
-  amount: number;
-  category: string;
-  description: string;
-  isActive: boolean;
-}
-
 export type UserRole = "user" | "super_admin";
 
 export interface Profile {
