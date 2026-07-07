@@ -703,7 +703,7 @@ export default function CategoryAllocation({
           className="relative inline-flex min-h-11 items-center gap-2 rounded-xl border border-cardBorder bg-card px-4 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-neonEmerald/40 hover:text-zinc-100 lg:min-h-0 lg:py-2"
         >
           <LayoutList className="h-4 w-4 text-neonEmerald" />
-          Categories
+          Category limits
           {!hasLimitsSet && (
             <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-neonViolet shadow-[0_0_8px_rgba(139,92,246,0.8)]" />
           )}

@@ -54,7 +54,7 @@ export default function BudgetToolButtons({
           "categories",
           <LayoutList className="h-4 w-4 shrink-0 text-neonEmerald" />,
         )}
-        Categories
+        Category limits
         {!hasLimitsSet && loadingAction !== "categories" && (
           <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-neonViolet shadow-[0_0_8px_rgba(139,92,246,0.8)]" />
         )}
