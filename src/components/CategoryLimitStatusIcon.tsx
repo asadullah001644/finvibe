@@ -1,4 +1,4 @@
-import { CheckCircle2, CircleAlert, CircleCheck } from "lucide-react";
+import { Circle, CircleDot, CircleX } from "lucide-react";
 import type { CategoryLimitStatus } from "@/lib/categorySpend";
 
 export const limitStatusLabels: Record<
@@ -13,20 +13,20 @@ export const limitStatusLabels: Record<
 const limitStatusConfig: Record<
   Exclude<CategoryLimitStatus, "none">,
   {
-    Icon: typeof CheckCircle2;
+    Icon: typeof Circle;
     className: string;
   }
 > = {
   remaining: {
-    Icon: CircleCheck,
+    Icon: Circle,
     className: "text-neonEmerald/80",
   },
   atLimit: {
-    Icon: CheckCircle2,
+    Icon: CircleDot,
     className: "text-amber-400",
   },
   over: {
-    Icon: CircleAlert,
+    Icon: CircleX,
     className: "text-neonCrimson",
   },
 };
