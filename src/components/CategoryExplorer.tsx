@@ -1,26 +1,11 @@
 "use client";
 
 import { format } from "date-fns";
-import { AnimatePresence, motion } from "framer-motion";
-import { Filter, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import ManageCategoriesModal from "@/components/ManageCategoriesModal";
 import ExpenseSearchField from "@/components/ExpenseSearchField";
-import {
-  categorySectionLabelClass,
-  CategoryPickerPanel,
-  groupFilterChipClass,
-} from "@/components/CategoryPickerUI";
-import {
-  ModalBackdrop,
-  ModalFooter,
-  ModalHeader,
-  getModalMotionProps,
-  modalShellClass,
-  useIsDesktop,
-} from "@/components/ui/modal";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   deleteExpenseAction,
   updateExpenseAction,
@@ -97,10 +82,10 @@ function expenseMatchesGroup(
 function expenseMatchesFilter(
   expense: ExplorerExpense,
   group: CategoryFilterGroup,
-  categories: string[],
+  category: string | null,
 ): boolean {
-  if (categories.length > 0) {
-    return categories.includes(expense.category);
+  if (category) {
+    return expense.category === category;
   }
 
   return expenseMatchesGroup(expense, group);
@@ -108,14 +93,10 @@ function expenseMatchesFilter(
 
 function formatFilterLabel(
   activeGroup: CategoryFilterGroup,
-  activeCategories: string[],
+  activeCategory: string | null,
 ): string {
-  if (activeCategories.length === 1) {
-    return getChildCategoryName(activeCategories[0]!);
-  }
-
-  if (activeCategories.length > 1) {
-    return `${activeCategories.length} categories`;
+  if (activeCategory) {
+    return getChildCategoryName(activeCategory);
   }
 
   if (activeGroup === "all") {
@@ -258,219 +239,13 @@ function ExpenseEditForm({
   );
 }
 
-interface CategoryFilterModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  categoryNames: string[];
-  groupFilters: Array<{ id: CategoryFilterGroup; label: string }>;
-  appliedGroup: CategoryFilterGroup;
-  appliedCategories: string[];
-  onApply: (group: CategoryFilterGroup, categories: string[]) => void;
-  isApplying: boolean;
-}
-
-function CategoryFilterModal({
-  isOpen,
-  onClose,
-  categoryNames,
-  groupFilters,
-  appliedGroup,
-  appliedCategories,
-  onApply,
-  isApplying,
-}: CategoryFilterModalProps) {
-  const [mounted, setMounted] = useState(false);
-  const [draftGroup, setDraftGroup] = useState<CategoryFilterGroup>(appliedGroup);
-  const [draftCategories, setDraftCategories] =
-    useState<string[]>(appliedCategories);
-  const isDesktop = useIsDesktop();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    setDraftGroup(appliedGroup);
-    setDraftCategories(appliedCategories);
-  }, [isOpen, appliedGroup, appliedCategories]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
-
-  const handleGroupChange = (group: CategoryFilterGroup) => {
-    setDraftGroup(group);
-    setDraftCategories([]);
-  };
-
-  const handleCategoryToggle = (category: string) => {
-    setDraftCategories((current) =>
-      current.includes(category)
-        ? current.filter((name) => name !== category)
-        : [...current, category],
-    );
-    setDraftGroup("all");
-  };
-
-  const handleClearFilters = () => {
-    setDraftGroup("all");
-    setDraftCategories([]);
-  };
-
-  const handleDone = () => {
-    onApply(draftGroup, draftCategories);
-  };
-
-  const categoryGroups = useMemo(
-    () =>
-      buildCategoryGroupsFromNames(categoryNames)
-        .map((group) => ({
-          ...group,
-          items: group.items.filter((name) => categoryNames.includes(name)),
-        }))
-        .filter((group) => group.items.length > 0),
-    [categoryNames],
-  );
-
-  const draftSummary =
-    draftCategories.length > 0
-      ? `${draftCategories.length} categor${draftCategories.length === 1 ? "y" : "ies"} selected`
-      : draftGroup === "all"
-        ? "All categories"
-        : `${draftGroup} group`;
-
-  const modal = (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <ModalBackdrop
-            onClose={onClose}
-            label="Close category filters"
-            disabled={isApplying}
-          />
-
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="category-filter-title"
-            {...getModalMotionProps(isDesktop)}
-            className={modalShellClass("36rem")}
-          >
-            <ModalHeader onClose={onClose} closeDisabled={isApplying}>
-              <h2
-                id="category-filter-title"
-                className="text-lg font-semibold tracking-tight text-zinc-100 lg:text-xl"
-              >
-                Filter categories
-              </h2>
-              <p className="mt-1 text-sm text-zinc-500">{draftSummary}</p>
-            </ModalHeader>
-
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 lg:px-6">
-              <div className="space-y-4 pb-1">
-                <section>
-                  <p className={categorySectionLabelClass}>Quick filters</p>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {groupFilters.map((filter) => {
-                      const isActive =
-                        draftCategories.length === 0 && draftGroup === filter.id;
-
-                      return (
-                        <button
-                          key={filter.id}
-                          type="button"
-                          disabled={isApplying}
-                          onClick={() => handleGroupChange(filter.id)}
-                          className={`${groupFilterChipClass(isActive)} disabled:cursor-not-allowed disabled:opacity-60`}
-                        >
-                          {filter.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-
-                <section>
-                  <p className={categorySectionLabelClass}>
-                    Specific categories
-                    <span className="ml-1 normal-case tracking-normal text-zinc-600">
-                      (select multiple)
-                    </span>
-                  </p>
-                  <div className="rounded-2xl border border-cardBorder/70 bg-[#0C0C0F]/60 p-3 ring-1 ring-white/[0.02] sm:p-3.5">
-                    <CategoryPickerPanel
-                      mode="multiple"
-                      groups={categoryGroups}
-                      selectedCategories={draftCategories}
-                      onSelect={handleCategoryToggle}
-                      disabled={isApplying}
-                    />
-                  </div>
-                </section>
-              </div>
-            </div>
-
-            <ModalFooter>
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={handleClearFilters}
-                  disabled={
-                    isApplying ||
-                    (draftCategories.length === 0 && draftGroup === "all")
-                  }
-                  className="inline-flex min-h-11 items-center px-1 text-sm text-zinc-500 transition-colors hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Clear all
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDone}
-                  disabled={isApplying}
-                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-neonViolet/40 bg-neonViolet/15 px-5 py-2.5 text-sm font-semibold text-neonViolet transition-colors hover:bg-neonViolet/25 disabled:cursor-not-allowed disabled:opacity-60 sm:max-w-[10rem] sm:flex-none"
-                >
-                  {isApplying ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Applying
-                    </>
-                  ) : (
-                    "Apply"
-                  )}
-                </button>
-              </div>
-            </ModalFooter>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-
-  if (!mounted) {
-    return null;
-  }
-
-  return createPortal(modal, document.body);
-}
-
 function getActiveCategoryNames(
   expenses: ExplorerExpense[],
   group: CategoryFilterGroup,
-  selectedCategories: string[],
+  activeCategory: string | null,
 ): string[] {
-  if (selectedCategories.length > 0) {
-    return selectedCategories;
+  if (activeCategory) {
+    return [activeCategory];
   }
 
   if (group === "all") {
@@ -486,15 +261,17 @@ function getActiveCategoryNames(
   ];
 }
 
-function readFiltersFromSearchParams(
-  searchParams: URLSearchParams,
-): { group: CategoryFilterGroup; categories: string[] } {
+function readFiltersFromSearchParams(searchParams: URLSearchParams): {
+  group: CategoryFilterGroup;
+  category: string | null;
+} {
+  const categories = searchParams.getAll("category");
   const groupParam = searchParams.get("group");
-  const group: CategoryFilterGroup = groupParam ?? "all";
+  const category = categories[0] ?? null;
 
   return {
-    group,
-    categories: searchParams.getAll("category"),
+    group: category ? "all" : (groupParam ?? "all"),
+    category,
   };
 }
 
@@ -514,17 +291,15 @@ export default function CategoryExplorer({
   const { refresh } = useAppNavigation();
 
   const urlFilters = readFiltersFromSearchParams(searchParams);
-  const [appliedGroup, setAppliedGroup] =
+  const [activeGroup, setActiveGroup] =
     useState<CategoryFilterGroup>(urlFilters.group);
-  const [appliedCategories, setAppliedCategories] = useState<string[]>(
-    urlFilters.categories,
+  const [activeCategory, setActiveCategory] = useState<string | null>(
+    urlFilters.category,
   );
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [isApplyingFilters, setIsApplyingFilters] = useState(false);
   const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileSection, setMobileSection] = useState<"categories" | "expenses">(
@@ -532,19 +307,19 @@ export default function CategoryExplorer({
   );
 
   useEffect(() => {
-    setAppliedGroup(urlFilters.group);
-    setAppliedCategories(urlFilters.categories);
-  }, [urlFilters.group, urlFilters.categories.join("|")]);
+    setActiveGroup(urlFilters.group);
+    setActiveCategory(urlFilters.category);
+  }, [urlFilters.group, urlFilters.category]);
 
   const filteredExpenses = useMemo(() => {
     const categoryFiltered = expenses
       .filter((expense) =>
-        expenseMatchesFilter(expense, appliedGroup, appliedCategories),
+        expenseMatchesFilter(expense, activeGroup, activeCategory),
       )
       .sort(compareExpensesByRecency);
 
     return filterExpensesBySearch(categoryFiltered, searchQuery);
-  }, [appliedCategories, appliedGroup, expenses, searchQuery]);
+  }, [activeCategory, activeGroup, expenses, searchQuery]);
 
   const hasSearchQuery = normalizeExpenseSearchQuery(searchQuery).length > 0;
 
@@ -555,29 +330,36 @@ export default function CategoryExplorer({
   const monthlyTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const activeCategoryNames = getActiveCategoryNames(
     expenses,
-    appliedGroup,
-    appliedCategories,
+    activeGroup,
+    activeCategory,
   );
 
-  const handleApplyFilters = async (
+  const syncFilterToUrl = (
     group: CategoryFilterGroup,
-    categories: string[],
+    category: string | null,
   ) => {
-    setIsApplyingFilters(true);
-
     const nextUrl = buildCategoriesUrl(monthKey, {
-      group: group === "all" ? undefined : group,
-      categories: categories.length > 0 ? categories : undefined,
+      group: !category && group !== "all" ? group : undefined,
+      category: category ?? undefined,
     });
 
-    setAppliedGroup(group);
-    setAppliedCategories(categories);
     window.history.replaceState(null, "", nextUrl);
+  };
 
-    await refresh();
+  const applyGroupFilter = (group: CategoryFilterGroup) => {
+    setActiveGroup(group);
+    setActiveCategory(null);
+    syncFilterToUrl(group, null);
+    setMobileSection("expenses");
+  };
 
-    setIsApplyingFilters(false);
-    setFilterOpen(false);
+  const applyCategoryFilter = (category: string | null) => {
+    setActiveGroup("all");
+    setActiveCategory(category);
+    syncFilterToUrl("all", category);
+    if (category) {
+      setMobileSection("expenses");
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -602,34 +384,23 @@ export default function CategoryExplorer({
     await refresh();
   };
 
-  const filterLabel = formatFilterLabel(appliedGroup, appliedCategories);
-  const hasActiveFilter =
-    appliedCategories.length > 0 || appliedGroup !== "all";
+  const filterLabel = formatFilterLabel(activeGroup, activeCategory);
+  const hasActiveFilter = activeCategory !== null || activeGroup !== "all";
 
   const handleSelectCategory = (categoryName: string) => {
-    if (
-      appliedCategories.length === 1 &&
-      appliedCategories[0] === categoryName
-    ) {
-      void handleApplyFilters("all", []);
+    if (activeCategory === categoryName) {
+      applyCategoryFilter(null);
       return;
     }
 
-    void handleApplyFilters("all", [categoryName]);
-    setMobileSection("expenses");
+    applyCategoryFilter(categoryName);
   };
 
   const handleClearFilter = () => {
-    void handleApplyFilters("all", []);
+    applyGroupFilter("all");
   };
 
-  const handleQuickGroup = (group: CategoryFilterGroup) => {
-    void handleApplyFilters(group, []);
-    setMobileSection("expenses");
-  };
-
-  const showCategoryOnExpense =
-    appliedCategories.length !== 1 && appliedGroup === "all";
+  const showCategoryOnExpense = !activeCategory;
 
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -651,24 +422,6 @@ export default function CategoryExplorer({
         <p className="mt-1 text-sm text-zinc-500">
           {expenses.length} expense{expenses.length === 1 ? "" : "s"} logged
         </p>
-
-        {hasActiveFilter && (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-neonViolet/30 bg-neonViolet/10 py-1.5 pl-3 pr-1.5 text-sm text-neonViolet">
-              <span>
-                {filterLabel} · {formatCurrency(totalSpent)}
-              </span>
-              <button
-                type="button"
-                onClick={handleClearFilter}
-                className="rounded-full p-1 transition-colors hover:bg-neonViolet/20"
-                aria-label="Clear filter"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </span>
-          </div>
-        )}
       </header>
 
       <div className="flex gap-2 lg:hidden">
@@ -736,73 +489,64 @@ export default function CategoryExplorer({
             mobileSection === "categories" ? "hidden lg:block" : ""
           }`}
         >
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-zinc-100">Expenses</h2>
-              <p className="mt-1 text-sm text-zinc-500">
-                {hasSearchQuery
-                  ? `${filteredExpenses.length} result${filteredExpenses.length === 1 ? "" : "s"} for "${searchQuery.trim()}"`
-                  : hasActiveFilter
-                    ? `${filteredExpenses.length} matching ${filteredExpenses.length === 1 ? "entry" : "entries"}`
-                    : "All expenses this month"}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setFilterOpen(true)}
-              disabled={isApplyingFilters}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-cardBorder bg-background/50 px-3 py-2 text-xs font-medium text-zinc-400 transition-colors hover:border-neonViolet/30 hover:text-neonViolet disabled:opacity-60"
-            >
-              <Filter className="h-3.5 w-3.5" />
-              More filters
-            </button>
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-zinc-100">Expenses</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              {hasSearchQuery
+                ? `${filteredExpenses.length} result${filteredExpenses.length === 1 ? "" : "s"} for "${searchQuery.trim()}"`
+                : hasActiveFilter
+                  ? `${filteredExpenses.length} in ${filterLabel} · ${formatCurrency(totalSpent)}`
+                  : `All ${expenses.length} expenses this month`}
+            </p>
           </div>
 
           <ExpenseSearchField
             value={searchQuery}
             onChange={setSearchQuery}
-            className="mb-4"
+            className="mb-3"
           />
 
-          {!hasActiveFilter && !hasSearchQuery && (
-            <div className="mb-4 flex flex-wrap gap-2">
-              {groupFilters.map((filter) => {
-                const isActive =
-                  appliedCategories.length === 0 && appliedGroup === filter.id;
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            {groupFilters.map((filter) => {
+              const isActive =
+                !activeCategory &&
+                (filter.id === "all"
+                  ? activeGroup === "all"
+                  : activeGroup === filter.id);
 
-                return (
+              return (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => applyGroupFilter(filter.id)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    isActive
+                      ? "border-neonViolet/40 bg-neonViolet/15 text-neonViolet"
+                      : "border-cardBorder bg-background/40 text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
+
+            {activeCategory && (
+              <>
+                <span className="text-xs text-zinc-600">·</span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-neonViolet/30 bg-neonViolet/10 px-3 py-1.5 text-xs font-medium text-neonViolet">
+                  {filterLabel}
                   <button
-                    key={filter.id}
                     type="button"
-                    disabled={isApplyingFilters}
-                    onClick={() => handleQuickGroup(filter.id)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
-                      isActive
-                        ? "border-neonViolet/40 bg-neonViolet/15 text-neonViolet"
-                        : "border-cardBorder bg-background/40 text-zinc-500 hover:text-zinc-300"
-                    }`}
+                    onClick={handleClearFilter}
+                    className="rounded-full px-1 text-neonViolet/80 hover:text-neonViolet"
+                    aria-label="Clear category filter"
                   >
-                    {filter.label}
+                    ×
                   </button>
-                );
-              })}
-            </div>
-          )}
-
-          <CategoryFilterModal
-            isOpen={filterOpen}
-            onClose={() => {
-              if (!isApplyingFilters) {
-                setFilterOpen(false);
-              }
-            }}
-            categoryNames={categoryNames}
-            groupFilters={groupFilters}
-            appliedGroup={appliedGroup}
-            appliedCategories={appliedCategories}
-            onApply={handleApplyFilters}
-            isApplying={isApplyingFilters}
-          />
+                </span>
+              </>
+            )}
+          </div>
 
           {deleteError && (
             <p className="mb-4 rounded-xl border border-neonCrimson/30 bg-neonCrimson/10 px-4 py-3 text-sm text-neonCrimson">
