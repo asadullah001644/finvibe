@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import { Filter, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import ManageCategoriesModal from "@/components/ManageCategoriesModal";
+import ExpenseSearchField from "@/components/ExpenseSearchField";
 import {
   categorySectionLabelClass,
   CategoryPickerPanel,
@@ -33,6 +34,7 @@ import {
 } from "@/lib/constants";
 import { formatCurrency, formatCurrencyPrecise } from "@/lib/currency";
 import { compareExpensesByRecency } from "@/lib/expenseSort";
+import { filterExpensesBySearch, normalizeExpenseSearchQuery } from "@/lib/expenseSearch";
 import { buildCategoriesUrl } from "@/lib/navigation";
 import type { BudgetCategory } from "@/lib/types";
 import type { CustomCategoryRecord } from "@/lib/customCategories";
@@ -524,6 +526,7 @@ export default function CategoryExplorer({
   const [filterOpen, setFilterOpen] = useState(false);
   const [isApplyingFilters, setIsApplyingFilters] = useState(false);
   const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [mobileSection, setMobileSection] = useState<"categories" | "expenses">(
     "categories",
   );
@@ -534,12 +537,16 @@ export default function CategoryExplorer({
   }, [urlFilters.group, urlFilters.categories.join("|")]);
 
   const filteredExpenses = useMemo(() => {
-    return expenses
+    const categoryFiltered = expenses
       .filter((expense) =>
         expenseMatchesFilter(expense, appliedGroup, appliedCategories),
       )
       .sort(compareExpensesByRecency);
-  }, [appliedCategories, appliedGroup, expenses]);
+
+    return filterExpensesBySearch(categoryFiltered, searchQuery);
+  }, [appliedCategories, appliedGroup, expenses, searchQuery]);
+
+  const hasSearchQuery = normalizeExpenseSearchQuery(searchQuery).length > 0;
 
   const totalSpent = filteredExpenses.reduce(
     (sum, expense) => sum + expense.amount,
@@ -733,9 +740,11 @@ export default function CategoryExplorer({
             <div>
               <h2 className="text-base font-semibold text-zinc-100">Expenses</h2>
               <p className="mt-1 text-sm text-zinc-500">
-                {hasActiveFilter
-                  ? `${filteredExpenses.length} matching ${filteredExpenses.length === 1 ? "entry" : "entries"}`
-                  : "All expenses this month"}
+                {hasSearchQuery
+                  ? `${filteredExpenses.length} result${filteredExpenses.length === 1 ? "" : "s"} for "${searchQuery.trim()}"`
+                  : hasActiveFilter
+                    ? `${filteredExpenses.length} matching ${filteredExpenses.length === 1 ? "entry" : "entries"}`
+                    : "All expenses this month"}
               </p>
             </div>
             <button
@@ -749,7 +758,13 @@ export default function CategoryExplorer({
             </button>
           </div>
 
-          {!hasActiveFilter && (
+          <ExpenseSearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            className="mb-4"
+          />
+
+          {!hasActiveFilter && !hasSearchQuery && (
             <div className="mb-4 flex flex-wrap gap-2">
               {groupFilters.map((filter) => {
                 const isActive =
@@ -801,14 +816,29 @@ export default function CategoryExplorer({
             </div>
           ) : filteredExpenses.length === 0 ? (
             <div className="rounded-xl border border-dashed border-cardBorder bg-background/40 px-4 py-10 text-center text-sm text-zinc-500">
-              No expenses match this filter.{" "}
-              <button
-                type="button"
-                onClick={handleClearFilter}
-                className="font-medium text-neonViolet hover:underline"
-              >
-                Show all
-              </button>
+              {hasSearchQuery ? (
+                <>
+                  No expenses match &ldquo;{searchQuery.trim()}&rdquo;.{" "}
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="font-medium text-neonViolet hover:underline"
+                  >
+                    Clear search
+                  </button>
+                </>
+              ) : (
+                <>
+                  No expenses match this filter.{" "}
+                  <button
+                    type="button"
+                    onClick={handleClearFilter}
+                    className="font-medium text-neonViolet hover:underline"
+                  >
+                    Show all
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <ul className="divide-y divide-cardBorder/70 overflow-hidden rounded-xl border border-cardBorder/80">

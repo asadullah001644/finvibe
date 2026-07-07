@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import ExpenseSearchField from "@/components/ExpenseSearchField";
 import {
   eachDayOfInterval,
   endOfMonth,
@@ -26,6 +27,7 @@ import {
 } from "@/lib/constants";
 import { formatCurrencyPrecise, formatHeatmapCellAmount } from "@/lib/currency";
 import { compareExpensesByRecency } from "@/lib/expenseSort";
+import { filterExpensesBySearch } from "@/lib/expenseSearch";
 import { monthKeyToDate } from "@/lib/month";
 
 interface HeatmapExpense {
@@ -285,6 +287,7 @@ export default function HeatmapCalendar({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const expenseMap = useMemo(() => buildExpenseMap(expenses), [expenses]);
 
@@ -294,7 +297,16 @@ export default function HeatmapCalendar({
   );
 
   const selectedItems = selectedDay?.items ?? [];
+  const filteredSelectedItems = useMemo(
+    () => filterExpensesBySearch(selectedItems, searchQuery),
+    [searchQuery, selectedItems],
+  );
   const selectedTotal = selectedDay?.total ?? 0;
+
+  useEffect(() => {
+    setSearchQuery("");
+    setEditingId(null);
+  }, [selectedDay?.date]);
 
   const handleDelete = async (id: string) => {
     setDeleteError(null);
@@ -472,8 +484,29 @@ export default function HeatmapCalendar({
                   </p>
                 </div>
               ) : (
+                <>
+                  {selectedItems.length >= 2 && (
+                    <ExpenseSearchField
+                      value={searchQuery}
+                      onChange={setSearchQuery}
+                      className="mb-4"
+                    />
+                  )}
+
+                  {filteredSelectedItems.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-cardBorder bg-background/60 px-6 py-8 text-center text-sm text-zinc-500">
+                      No expenses match &ldquo;{searchQuery.trim()}&rdquo;.{" "}
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="font-medium text-neonViolet hover:underline"
+                      >
+                        Clear search
+                      </button>
+                    </div>
+                  ) : (
                 <ul className="space-y-3">
-                  {selectedItems.map((item, index) => (
+                  {filteredSelectedItems.map((item, index) => (
                     <li
                       key={item._id ?? `${item.category}-${item.amount}-${index}`}
                       className="rounded-2xl border border-cardBorder bg-background/70 px-4 py-3"
@@ -533,6 +566,8 @@ export default function HeatmapCalendar({
                     </li>
                   ))}
                 </ul>
+                  )}
+                </>
               )}
             </motion.div>
           </>
