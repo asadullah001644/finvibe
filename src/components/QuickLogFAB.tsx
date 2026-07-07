@@ -23,7 +23,7 @@ import { CategoryPickerPanel } from "@/components/CategoryPickerUI";
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { saveExpenseAction } from "@/lib/actions";
 import {
-  getCategoryGroups,
+  buildCategoryGroupsFromNames,
   resolveCategoryHint,
 } from "@/lib/constants";
 import { getLocalTodayDateString } from "@/lib/expenseDate";
@@ -128,12 +128,9 @@ export default function QuickLogFAB({
   customCategories,
   children,
 }: QuickLogFABProps) {
-  const categoryGroups = getCategoryGroups()
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => customCategories.includes(item)),
-    }))
-    .filter((group) => group.items.length > 0);
+  const categoryGroups = buildCategoryGroupsFromNames(customCategories).filter(
+    (group) => group.items.length > 0,
+  );
   const { refresh } = useAppNavigation();
   const amountRef = useRef<HTMLInputElement>(null);
 

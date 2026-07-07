@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Settings2 } from "lucide-react";
+import ManageCategoriesModal from "@/components/ManageCategoriesModal";
 import CategoryLimitStatusIcon, {
   limitStatusLabels,
 } from "@/components/CategoryLimitStatusIcon";
@@ -8,24 +9,24 @@ import {
   buildGroupedCategoryRows,
   countActiveCategories,
   filterCategoryGroups,
-  formatCategoryRowCaption,
-  formatLimitRowAmount,
-  getCategoryBarFillPercent,
   getCategoryLimitStatus,
   type CategoryExpense,
   type CategoryGroupRow,
   type CategoryRow,
 } from "@/lib/categorySpend";
-import { formatCurrency } from "@/lib/currency";
+import { formatCompactCurrency, formatCurrency } from "@/lib/currency";
 import type { BudgetCategory } from "@/lib/types";
-import { useState } from "react";
+import type { CustomCategoryRecord } from "@/lib/customCategories";
+import { useEffect, useState } from "react";
 
 interface CategoryBudgetPanelProps {
   categories: BudgetCategory[];
   expenses: CategoryExpense[];
   activeCategoryNames: string[];
+  customCategories: CustomCategoryRecord[];
+  isSuperAdmin: boolean;
   onSelectCategory: (categoryName: string) => void;
-  onClearFilter: () => void;
+  compact?: boolean;
 }
 
 function isRowActive(row: CategoryRow, activeCategoryNames: string[]): boolean {
@@ -34,88 +35,61 @@ function isRowActive(row: CategoryRow, activeCategoryNames: string[]): boolean {
 
 function BudgetRow({
   row,
-  totalSpent,
   isActive,
   onSelect,
+  compact = false,
 }: {
   row: CategoryRow;
-  totalSpent: number;
   isActive: boolean;
   onSelect: (categoryName: string) => void;
+  compact?: boolean;
 }) {
   const status = getCategoryLimitStatus(row);
   const hasLimit = row.allocated > 0;
-  const fillPercent = getCategoryBarFillPercent(row);
-  const caption =
-    row.spent > 0 ? formatCategoryRowCaption(row, totalSpent) : null;
 
   if (row.spent <= 0 && row.allocated <= 0) {
     return null;
   }
 
+  const amountLabel = compact
+    ? formatCompactCurrency(row.spent)
+    : formatCurrency(row.spent);
+
   return (
-    <li className={row.isChild ? "ml-3 border-l border-cardBorder pl-3" : ""}>
+    <li className={row.isChild && !compact ? "ml-2 border-l border-cardBorder/80 pl-3" : ""}>
       <button
         type="button"
         onClick={() => onSelect(row.name)}
         aria-label={`${row.displayName}, ${formatCurrency(row.spent)} spent${
-          hasLimit ? `, ${formatLimitRowAmount(row)}` : ""
-        }${status !== "none" ? `, ${limitStatusLabels[status]}` : ""}`}
+          status !== "none" ? `, ${limitStatusLabels[status]}` : ""
+        }`}
         aria-pressed={isActive}
-        className={`w-full rounded-xl px-2 py-2.5 text-left transition-colors ${
+        className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 text-left transition-colors ${
+          compact ? "py-2.5" : "py-3"
+        } ${
           isActive
-            ? "border border-neonViolet/40 bg-neonViolet/10"
-            : "border border-transparent hover:border-cardBorder hover:bg-background/50"
+            ? "bg-neonViolet/15 ring-1 ring-neonViolet/35"
+            : "hover:bg-background/60"
         }`}
       >
-        <div className="mb-1.5 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            {status !== "none" && <CategoryLimitStatusIcon status={status} />}
-            <span className="truncate text-sm font-medium text-zinc-200">
-              {row.displayName}
-            </span>
-          </div>
-          <span
-            className={`shrink-0 text-right text-sm font-semibold tabular-nums ${
-              row.isOver ? "text-neonCrimson" : "text-zinc-300"
-            }`}
-          >
-            {formatCurrency(row.spent)}
-            {hasLimit && (
-              <span className="font-normal text-zinc-500">
-                {" "}
-                / {formatCurrency(row.allocated)}
-              </span>
-            )}
+        <div className="flex min-w-0 items-center gap-2.5">
+          {status !== "none" && (
+            <CategoryLimitStatusIcon status={status} className="h-4 w-4" />
+          )}
+          <span className="truncate text-sm font-medium text-zinc-100">
+            {row.displayName}
           </span>
         </div>
-
-        {(hasLimit || row.spent > 0) && (
-          <div className="h-1.5 overflow-hidden rounded-full bg-background">
-            <div
-              className={`h-full rounded-full transition-all ${
-                row.isOver ? "bg-neonCrimson" : "bg-neonEmerald"
-              }`}
-              style={{ width: `${fillPercent}%` }}
-            />
-          </div>
-        )}
-
-        {caption && (
-          <p
-            className={`mt-1 text-xs font-medium ${
-              caption.isOver
-                ? "text-neonCrimson"
-                : caption.atLimit
-                  ? "text-amber-400/90"
-                  : hasLimit
-                    ? "text-neonEmerald/90"
-                    : "text-zinc-500"
-            }`}
-          >
-            {caption.primary}
+        <div className="shrink-0 text-right">
+          <p className="text-sm font-semibold tabular-nums text-zinc-200">
+            {amountLabel}
           </p>
-        )}
+          {hasLimit && (
+            <p className="text-[11px] tabular-nums text-zinc-500">
+              of {compact ? formatCompactCurrency(row.allocated) : formatCurrency(row.allocated)}
+            </p>
+          )}
+        </div>
       </button>
     </li>
   );
@@ -123,32 +97,36 @@ function BudgetRow({
 
 function BudgetGroup({
   group,
-  totalSpent,
   activeCategoryNames,
   onSelectCategory,
-  defaultExpanded,
+  compact = false,
 }: {
   group: CategoryGroupRow;
-  totalSpent: number;
   activeCategoryNames: string[];
   onSelectCategory: (categoryName: string) => void;
-  defaultExpanded: boolean;
+  compact?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
   const hasActiveChild = group.items.some((row) =>
     isRowActive(row, activeCategoryNames),
   );
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (hasActiveChild) {
+      setExpanded(true);
+    }
+  }, [hasActiveChild]);
 
   if (!group.label || !group.rollup) {
     return (
-      <ul className="space-y-1">
+      <ul className="space-y-0.5">
         {group.items.map((row) => (
           <BudgetRow
             key={row.name}
             row={row}
-            totalSpent={totalSpent}
             isActive={isRowActive(row, activeCategoryNames)}
             onSelect={onSelectCategory}
+            compact={compact}
           />
         ))}
       </ul>
@@ -156,11 +134,11 @@ function BudgetGroup({
   }
 
   return (
-    <div>
+    <div className="rounded-xl border border-cardBorder/60 bg-background/30">
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
-        className={`mb-2 flex w-full items-center justify-between gap-3 rounded-lg px-1 py-1 text-left transition-colors hover:bg-background/40 ${
+        className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-background/50 ${
           hasActiveChild ? "text-neonViolet" : ""
         }`}
       >
@@ -170,30 +148,24 @@ function BudgetGroup({
               expanded ? "rotate-0" : "-rotate-90"
             }`}
           />
-          <span className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-neonViolet/80">
+          <span className="truncate text-sm font-semibold text-zinc-200">
             {group.label}
           </span>
         </span>
         <span className="shrink-0 text-sm font-semibold tabular-nums text-zinc-300">
           {formatCurrency(group.rollup.spent)}
-          {group.rollup.allocated > 0 && (
-            <span className="font-normal text-zinc-500">
-              {" "}
-              / {formatCurrency(group.rollup.allocated)}
-            </span>
-          )}
         </span>
       </button>
 
       {expanded && (
-        <ul className="space-y-1 pb-2">
+        <ul className="space-y-0.5 border-t border-cardBorder/50 px-1 pb-1 pt-0.5">
           {group.items.map((row) => (
             <BudgetRow
               key={row.name}
               row={row}
-              totalSpent={totalSpent}
               isActive={isRowActive(row, activeCategoryNames)}
               onSelect={onSelectCategory}
+              compact={compact}
             />
           ))}
         </ul>
@@ -206,81 +178,67 @@ export default function CategoryBudgetPanel({
   categories,
   expenses,
   activeCategoryNames,
+  customCategories,
+  isSuperAdmin,
   onSelectCategory,
-  onClearFilter,
+  compact = false,
 }: CategoryBudgetPanelProps) {
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
   const { groups, totalSpent } = buildGroupedCategoryRows(categories, expenses);
   const visibleGroups = filterCategoryGroups(groups, totalSpent, {
     showEmptyBudgets: false,
   });
   const activeCount = countActiveCategories(visibleGroups);
-  const hasLimitsSet = categories.some((category) => category.allocated > 0);
 
   return (
-    <section className="rounded-2xl border border-cardBorder bg-card/60 p-4 sm:p-5 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
-      <div className="mb-4">
-        <p className="text-xs font-medium uppercase tracking-[0.25em] text-neonViolet/80">
-          Category budgets
-        </p>
-        <p className="mt-2 text-2xl font-bold tracking-tight text-neonCrimson">
-          {formatCurrency(totalSpent)}
-        </p>
-        <p className="mt-1 text-sm text-zinc-500">
-          {activeCount} categor{activeCount === 1 ? "y" : "ies"} with spending
-          {hasLimitsSet && " · tap to filter transactions"}
-        </p>
-      </div>
+    <>
+      {isSuperAdmin && (
+        <ManageCategoriesModal
+          isOpen={manageCategoriesOpen}
+          onClose={() => setManageCategoriesOpen(false)}
+          customCategories={customCategories}
+        />
+      )}
 
-      {activeCategoryNames.length > 0 && (
-        <button
-          type="button"
-          onClick={onClearFilter}
-          className="mb-4 w-full rounded-xl border border-cardBorder bg-background/50 px-3 py-2 text-xs font-medium text-zinc-400 transition-colors hover:border-neonViolet/30 hover:text-neonViolet"
+      {(isSuperAdmin || !compact) && (
+        <div
+          className={`flex items-center gap-3 ${compact ? "mb-2 justify-end" : "mb-3 justify-between"}`}
         >
-          Clear filter · show all transactions
-        </button>
+          {!compact && (
+            <p className="text-sm text-zinc-500">
+              {activeCount} active categor{activeCount === 1 ? "y" : "ies"}
+            </p>
+          )}
+          {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={() => setManageCategoriesOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-neonViolet/25 bg-neonViolet/10 px-2.5 py-1.5 text-xs font-medium text-neonViolet transition-colors hover:bg-neonViolet/20"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+            Manage
+          </button>
+        )}
+        </div>
       )}
 
       {visibleGroups.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-cardBorder bg-background/40 px-4 py-6 text-center text-sm text-zinc-500">
-          No category spending this month yet.
+        <p className="rounded-xl border border-dashed border-cardBorder bg-background/40 px-4 py-8 text-center text-sm text-zinc-500">
+          No spending by category yet this month.
         </p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2">
           {visibleGroups.map((group) => (
             <BudgetGroup
               key={group.label ?? group.items[0]?.name ?? "misc"}
               group={group}
-              totalSpent={totalSpent}
               activeCategoryNames={activeCategoryNames}
               onSelectCategory={onSelectCategory}
-              defaultExpanded={
-                activeCategoryNames.length === 0 ||
-                group.items.some((row) =>
-                  isRowActive(row, activeCategoryNames),
-                )
-              }
+              compact={compact}
             />
           ))}
         </div>
       )}
-
-      {hasLimitsSet && (
-        <div className="mt-4 hidden flex-wrap items-center gap-3 border-t border-cardBorder/70 pt-4 text-[10px] text-zinc-600 lg:flex">
-          <span className="inline-flex items-center gap-1">
-            <CategoryLimitStatusIcon status="remaining" className="h-3 w-3" />
-            Budget left
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <CategoryLimitStatusIcon status="atLimit" className="h-3 w-3" />
-            Reached
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <CategoryLimitStatusIcon status="over" className="h-3 w-3" />
-            Over
-          </span>
-        </div>
-      )}
-    </section>
+    </>
   );
 }

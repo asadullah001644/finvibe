@@ -1,6 +1,6 @@
 import {
-  getCategoryGroups,
   getChildCategoryName,
+  buildCategoryGroupsFromNames,
 } from "@/lib/constants";
 import { formatCurrency } from "@/lib/currency";
 import type { BudgetCategory } from "@/lib/types";
@@ -154,10 +154,11 @@ export function buildGroupedCategoryRows(
   );
 
   const knownNames = new Set(categories.map((category) => category.name));
+  const categoryGroups = buildCategoryGroupsFromNames([...knownNames]);
   const groups: CategoryGroupRow[] = [];
   const generalItems: CategoryRow[] = [];
 
-  for (const group of getCategoryGroups()) {
+  for (const group of categoryGroups) {
     const items = sortRowsBySpend(
       group.items
         .map((name) =>

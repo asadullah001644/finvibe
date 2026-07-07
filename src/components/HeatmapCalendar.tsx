@@ -21,7 +21,7 @@ import {
   updateExpenseAction,
 } from "@/lib/actions";
 import {
-  getCategoryGroups,
+  buildCategoryGroupsFromNames,
   getChildCategoryName,
 } from "@/lib/constants";
 import { formatCurrencyPrecise, formatHeatmapCellAmount } from "@/lib/currency";
@@ -158,12 +158,9 @@ function ExpenseEditForm({
   onCancel,
   onSaved,
 }: ExpenseEditFormProps) {
-  const categoryGroups = getCategoryGroups()
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((name) => categoryNames.includes(name)),
-    }))
-    .filter((group) => group.items.length > 0);
+  const categoryGroups = buildCategoryGroupsFromNames(categoryNames).filter(
+    (group) => group.items.length > 0,
+  );
   const [amount, setAmount] = useState(String(item.amount));
   const [category, setCategory] = useState(item.category);
   const [description, setDescription] = useState(item.description);

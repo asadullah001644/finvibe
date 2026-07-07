@@ -197,13 +197,76 @@ function remapStoredCategories(
 
 export function mergeWithDefaultCategories(
   stored: BudgetCategory[] | null | undefined,
+  customFullNames: string[] = [],
 ): BudgetCategory[] {
   const storedMap = remapStoredCategories(stored);
-
-  return DEFAULT_CATEGORIES.map((category) => ({
+  const merged = DEFAULT_CATEGORIES.map((category) => ({
     name: category.name,
     allocated: storedMap.get(category.name) ?? 0,
   }));
+  const known = new Set(merged.map((category) => category.name));
+
+  for (const name of customFullNames) {
+    if (!known.has(name)) {
+      merged.push({
+        name,
+        allocated: storedMap.get(name) ?? 0,
+      });
+      known.add(name);
+    }
+  }
+
+  for (const [name, allocated] of storedMap) {
+    if (!known.has(name)) {
+      merged.push({ name, allocated });
+      known.add(name);
+    }
+  }
+
+  return merged;
+}
+
+export function buildCategoryGroupsFromNames(
+  categoryNames: string[],
+): CategoryGroup[] {
+  const uniqueNames = [...new Set(categoryNames)];
+  const byGroup = new Map<string | null, string[]>();
+
+  for (const name of uniqueNames) {
+    const label = getParentCategoryName(name);
+    const items = byGroup.get(label) ?? [];
+    items.push(name);
+    byGroup.set(label, items);
+  }
+
+  const defaultGroupOrder = getCategoryGroups()
+    .map((group) => group.label)
+    .filter((label): label is string => label !== null);
+
+  const customGroupLabels = [...byGroup.keys()]
+    .filter(
+      (label): label is string =>
+        label !== null && !defaultGroupOrder.includes(label),
+    )
+    .sort((left, right) => left.localeCompare(right));
+
+  const orderedLabels: Array<string | null> = [
+    ...defaultGroupOrder.filter((label) => byGroup.has(label)),
+    ...customGroupLabels,
+  ];
+
+  if (byGroup.has(null) && !orderedLabels.includes(null)) {
+    orderedLabels.push(null);
+  }
+
+  return orderedLabels
+    .map((label) => ({
+      label,
+      items: [...(byGroup.get(label) ?? [])].sort((left, right) =>
+        getChildCategoryName(left).localeCompare(getChildCategoryName(right)),
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
 }
 
 export function distributeCategoryBudgets(

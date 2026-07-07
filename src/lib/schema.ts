@@ -27,6 +27,21 @@ export function isUserIdColumnMissing(error: {
   return message.includes("user_id") || message.includes("column");
 }
 
+export function isCustomCategoriesTableMissing(error: {
+  code?: string;
+  message?: string;
+} | null): boolean {
+  if (!error) {
+    return false;
+  }
+
+  const message = error.message ?? "";
+  return (
+    (error.code === "PGRST205" || error.code === "42P01") &&
+    message.includes("custom_categories")
+  );
+}
+
 export function isSchemaNotReady(error: {
   code?: string;
   message?: string;

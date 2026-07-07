@@ -2,10 +2,14 @@
 
 import {
   addExpense,
+  addCustomCategory,
   deleteExpense,
+  deleteCustomCategory,
   ensureMonthBudget,
   getExpensesForMonth,
   getMostRecentPriorBudget,
+  listCustomCategories,
+  updateCustomCategory,
   updateBudgetIncome,
   updateCategoryAllocations,
   updateExpense,
@@ -261,5 +265,70 @@ export async function getPriorMonthBudgetAction(
   } catch (error) {
     console.error("getPriorMonthBudgetAction:", error);
     return null;
+  }
+}
+
+export async function addCustomCategoryAction(input: {
+  groupLabel?: string;
+  leafName: string;
+}): Promise<ActionResult & { fullName?: string }> {
+  try {
+    if (!(await hasValidSession())) {
+      return sessionError();
+    }
+
+    const created = await addCustomCategory(input.groupLabel, input.leafName);
+    return { success: true, fullName: created.fullName };
+  } catch (error) {
+    return actionError(error, "Could not add category.");
+  }
+}
+
+export async function updateCustomCategoryAction(input: {
+  id: string;
+  groupLabel?: string;
+  leafName: string;
+}): Promise<ActionResult & { fullName?: string }> {
+  try {
+    if (!(await hasValidSession())) {
+      return sessionError();
+    }
+
+    const updated = await updateCustomCategory(
+      input.id,
+      input.groupLabel,
+      input.leafName,
+    );
+    return { success: true, fullName: updated.fullName };
+  } catch (error) {
+    return actionError(error, "Could not update category.");
+  }
+}
+
+export async function deleteCustomCategoryAction(
+  id: string,
+): Promise<ActionResult> {
+  try {
+    if (!(await hasValidSession())) {
+      return sessionError();
+    }
+
+    await deleteCustomCategory(id);
+    return { success: true };
+  } catch (error) {
+    return actionError(error, "Could not remove category.");
+  }
+}
+
+export async function listCustomCategoriesAction() {
+  try {
+    if (!(await hasValidSession())) {
+      return [];
+    }
+
+    return await listCustomCategories();
+  } catch (error) {
+    console.error("listCustomCategoriesAction:", error);
+    return [];
   }
 }

@@ -50,7 +50,11 @@ export default async function CategoriesPage({
         isSuperAdmin={isSuperAdmin}
       >
         <ExpenseContentSuspense fallback={<CategoriesPageSkeleton />}>
-          <CategoriesContentLoader monthKey={monthKey} budget={budget} />
+          <CategoriesContentLoader
+            monthKey={monthKey}
+            budget={budget}
+            isSuperAdmin={isSuperAdmin}
+          />
         </ExpenseContentSuspense>
       </MonthDataSync>
     </AuthGate>

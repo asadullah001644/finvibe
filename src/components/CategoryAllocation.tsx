@@ -14,8 +14,8 @@ import {
 import { useAppNavigation } from "@/components/NavigationLoadingProvider";
 import { saveCategoryAllocationsAction } from "@/lib/actions";
 import {
+  buildCategoryGroupsFromNames,
   distributeCategoryBudgets,
-  getCategoryGroups,
   getChildCategoryName,
   resolveCategoryHint,
 } from "@/lib/constants";
@@ -99,7 +99,9 @@ export default function CategoryAllocation({
     );
   };
 
-  const categoryGroups = getCategoryGroups();
+  const categoryGroups = buildCategoryGroupsFromNames(
+    categories.map((category) => category.name),
+  );
 
   const handleSuggestSplit = () => {
     if (spendable <= 0) {

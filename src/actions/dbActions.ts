@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { getSessionUser } from "@/lib/auth";
+import { getProfileOrDefault, getSessionUser, isSuperAdmin } from "@/lib/auth";
 import { resolveMonthKey } from "@/lib/month";
 import type {
   Budget,
@@ -7,6 +7,12 @@ import type {
   SerializedExpense,
 } from "@/lib/types";
 import { DEFAULT_CATEGORIES, mergeWithDefaultCategories } from "@/lib/constants";
+import {
+  mapCustomCategoryRow,
+  validateCustomCategoryInput,
+  type CustomCategoryRecord,
+} from "@/lib/customCategories";
+import { isCustomCategoriesTableMissing } from "@/lib/schema";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 
 function userDataTag(userId: string): string {
@@ -19,6 +25,29 @@ function budgetTag(userId: string, monthKey: string): string {
 
 function expensesTag(userId: string, monthKey: string): string {
   return `expenses-${userId}-${monthKey}`;
+}
+
+const GLOBAL_CUSTOM_CATEGORIES_TAG = "custom-categories-global";
+
+async function requireSuperAdminForCategoryManagement(): Promise<void> {
+  const user = await getSessionUser();
+  if (!user) {
+    throw new Error("You must be signed in.");
+  }
+
+  const profile = await getProfileOrDefault(user);
+  if (!isSuperAdmin(profile)) {
+    throw new Error("Only super admins can manage categories.");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("custom_categories").select("id").limit(1);
+
+  if (error && isCustomCategoriesTableMissing(error)) {
+    throw new Error(
+      "Custom categories are not set up yet. Run migration 008_global_custom_categories.sql in Supabase.",
+    );
+  }
 }
 
 interface DbWriteOptions {
@@ -122,13 +151,53 @@ function getMonthDateRange(monthKey: string): { start: string; end: string } | n
 const BUDGET_COLUMNS = "month_key, total_salary, savings_goal, categories";
 const EXPENSE_COLUMNS = "id, amount, category, description, date, created_at";
 
-function mapBudgetRow(row: BudgetRow | null, monthKey: string): Budget {
+async function fetchCustomCategoryPaths(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("custom_categories")
+    .select("group_label, leaf_name, id, created_at")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    if (isCustomCategoriesTableMissing(error)) {
+      return [];
+    }
+
+    console.error("Error fetching custom categories:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row) => mapCustomCategoryRow(row).fullName);
+}
+
+async function getCustomCategoryPaths(): Promise<string[]> {
+  return unstable_cache(
+    fetchCustomCategoryPaths,
+    ["custom-category-paths-global"],
+    {
+      revalidate: 30,
+      tags: [GLOBAL_CUSTOM_CATEGORIES_TAG],
+    },
+  )();
+}
+
+async function getMergedCategories(
+  stored: BudgetCategory[] | null | undefined,
+): Promise<BudgetCategory[]> {
+  const customPaths = await getCustomCategoryPaths();
+  return mergeWithDefaultCategories(stored, customPaths);
+}
+
+async function mapBudgetRow(
+  row: BudgetRow | null,
+  monthKey: string,
+): Promise<Budget> {
   if (!row) {
     return {
       monthKey,
       totalSalary: 0,
       savingsGoal: 0,
-      categories: DEFAULT_CATEGORIES,
+      categories: await getMergedCategories(null),
     };
   }
 
@@ -136,7 +205,7 @@ function mapBudgetRow(row: BudgetRow | null, monthKey: string): Budget {
     monthKey: row.month_key,
     totalSalary: Number(row.total_salary ?? 0),
     savingsGoal: Number(row.savings_goal ?? 0),
-    categories: mergeWithDefaultCategories(row.categories),
+    categories: await getMergedCategories(row.categories),
   };
 }
 
@@ -173,7 +242,7 @@ async function fetchBudget(
     throw new Error(error.message);
   }
 
-  return data ? mapBudgetRow(data as BudgetRow, monthKey) : null;
+  return data ? await mapBudgetRow(data as BudgetRow, monthKey) : null;
 }
 
 export async function getBudget(monthKey: string): Promise<Budget | null> {
@@ -218,7 +287,7 @@ export async function getMostRecentPriorBudget(
   }
 
   return data
-    ? mapBudgetRow(data as BudgetRow, (data as BudgetRow).month_key)
+    ? await mapBudgetRow(data as BudgetRow, (data as BudgetRow).month_key)
     : null;
 }
 
@@ -248,7 +317,7 @@ async function createEmptyBudget(monthKey: string): Promise<Budget> {
     throw new Error(error.message);
   }
 
-  return mapBudgetRow(data as BudgetRow, monthKey);
+  return await mapBudgetRow(data as BudgetRow, monthKey);
 }
 
 export async function ensureMonthBudget(
@@ -264,7 +333,7 @@ export async function ensureMonthBudget(
   const prior = await getMostRecentPriorBudget(monthKey);
 
   if (prior) {
-    const carriedCategories = mergeWithDefaultCategories(prior.categories);
+    const carriedCategories = prior.categories;
 
     await patchBudgetRow(
       monthKey,
@@ -560,7 +629,7 @@ async function getMostRecentBudgetMonthKey(
   }
 
   for (const row of data) {
-    const budget = mapBudgetRow(row as BudgetRow, row.month_key);
+    const budget = await mapBudgetRow(row as BudgetRow, row.month_key);
     if (isMeaningfulBudget(budget)) {
       return row.month_key;
     }
@@ -591,3 +660,230 @@ export async function resolveDefaultMonthKeyForUser(): Promise<string> {
   const recentMonth = await getMostRecentBudgetMonthKey(user.id);
   return recentMonth ?? current;
 }
+
+export async function listCustomCategories(): Promise<CustomCategoryRecord[]> {
+  const user = await getSessionUser();
+  if (!user) {
+    return [];
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("custom_categories")
+    .select("id, group_label, leaf_name, created_at")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    if (isCustomCategoriesTableMissing(error)) {
+      return [];
+    }
+
+    console.error("Error listing custom categories:", error);
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((row) => mapCustomCategoryRow(row));
+}
+
+/** @deprecated Use listCustomCategories */
+export const listUserCustomCategories = listCustomCategories;
+
+async function migrateCategoryNameAcrossApp(
+  oldName: string,
+  newName: string,
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { error: expenseError } = await supabase
+    .from("expenses")
+    .update({ category: newName })
+    .eq("category", oldName);
+
+  if (expenseError) {
+    throw new Error(expenseError.message);
+  }
+
+  const { data: budgets, error: budgetFetchError } = await supabase
+    .from("budgets")
+    .select("id, categories");
+
+  if (budgetFetchError) {
+    throw new Error(budgetFetchError.message);
+  }
+
+  for (const budget of budgets ?? []) {
+    const categories = Array.isArray(budget.categories)
+      ? (budget.categories as BudgetCategory[])
+      : [];
+
+    if (!categories.some((category) => category.name === oldName)) {
+      continue;
+    }
+
+    const updated = categories.map((category) =>
+      category.name === oldName ? { ...category, name: newName } : category,
+    );
+
+    const { error: budgetUpdateError } = await supabase
+      .from("budgets")
+      .update({ categories: updated, updated_at: new Date().toISOString() })
+      .eq("id", budget.id);
+
+    if (budgetUpdateError) {
+      throw new Error(budgetUpdateError.message);
+    }
+  }
+}
+
+async function revalidateCustomCategories(): Promise<void> {
+  await revalidateAppData();
+  revalidateTag(GLOBAL_CUSTOM_CATEGORIES_TAG, "max");
+}
+
+export async function addCustomCategory(
+  groupLabel: string | undefined,
+  leafName: string,
+): Promise<CustomCategoryRecord> {
+  await requireSuperAdminForCategoryManagement();
+
+  const existing = await listCustomCategories();
+  const validation = validateCustomCategoryInput(groupLabel, leafName, {
+    existingCustomFullNames: existing.map((category) => category.fullName),
+  });
+
+  if (!validation.ok) {
+    throw new Error(validation.error);
+  }
+
+  const user = await getSessionUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("custom_categories")
+    .insert({
+      group_label: validation.groupLabel,
+      leaf_name: validation.leafName,
+      created_by: user?.id ?? null,
+    })
+    .select("id, group_label, leaf_name, created_at")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("That category already exists.");
+    }
+
+    throw new Error(error.message);
+  }
+
+  await revalidateCustomCategories();
+  return mapCustomCategoryRow(data);
+}
+
+export async function updateCustomCategory(
+  id: string,
+  groupLabel: string | undefined,
+  leafName: string,
+): Promise<CustomCategoryRecord> {
+  await requireSuperAdminForCategoryManagement();
+
+  const supabase = await createClient();
+  const { data: existing, error: fetchError } = await supabase
+    .from("custom_categories")
+    .select("id, group_label, leaf_name, created_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw new Error(fetchError.message);
+  }
+
+  if (!existing) {
+    throw new Error("Category not found.");
+  }
+
+  const current = mapCustomCategoryRow(existing);
+  const allCustom = await listCustomCategories();
+  const validation = validateCustomCategoryInput(groupLabel, leafName, {
+    existingCustomFullNames: allCustom.map((category) => category.fullName),
+    excludeFullName: current.fullName,
+  });
+
+  if (!validation.ok) {
+    throw new Error(validation.error);
+  }
+
+  if (validation.fullName !== current.fullName) {
+    await migrateCategoryNameAcrossApp(current.fullName, validation.fullName);
+  }
+
+  const { data, error } = await supabase
+    .from("custom_categories")
+    .update({
+      group_label: validation.groupLabel,
+      leaf_name: validation.leafName,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select("id, group_label, leaf_name, created_at")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("That category already exists.");
+    }
+
+    throw new Error(error.message);
+  }
+
+  await revalidateCustomCategories();
+  return mapCustomCategoryRow(data);
+}
+
+export async function deleteCustomCategory(id: string): Promise<void> {
+  await requireSuperAdminForCategoryManagement();
+
+  const supabase = await createClient();
+  const { data: existing, error: fetchError } = await supabase
+    .from("custom_categories")
+    .select("id, group_label, leaf_name, created_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw new Error(fetchError.message);
+  }
+
+  if (!existing) {
+    throw new Error("Category not found.");
+  }
+
+  const fullName = mapCustomCategoryRow(existing).fullName;
+  const { count, error: countError } = await supabase
+    .from("expenses")
+    .select("id", { count: "exact", head: true })
+    .eq("category", fullName);
+
+  if (countError) {
+    throw new Error(countError.message);
+  }
+
+  if ((count ?? 0) > 0) {
+    throw new Error(
+      "This category has expenses logged. Reassign or delete them first.",
+    );
+  }
+
+  const { error } = await supabase.from("custom_categories").delete().eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await revalidateCustomCategories();
+}
+
+/** @deprecated Use addCustomCategory */
+export const addUserCustomCategory = addCustomCategory;
+
+/** @deprecated Use deleteCustomCategory */
+export const deleteUserCustomCategory = deleteCustomCategory;
