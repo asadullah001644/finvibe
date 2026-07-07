@@ -12,7 +12,7 @@ import {
   type CategoryGroupRow,
   type CategoryRow,
 } from "@/lib/categorySpend";
-import { formatCompactCurrency, formatCurrency } from "@/lib/currency";
+import { formatCurrency } from "@/lib/currency";
 import type { BudgetCategory } from "@/lib/types";
 import { useEffect, useState } from "react";
 
@@ -46,9 +46,7 @@ function BudgetRow({
     return null;
   }
 
-  const amountLabel = compact
-    ? formatCompactCurrency(row.spent)
-    : formatCurrency(row.spent);
+  const amountLabel = formatCurrency(row.spent);
 
   return (
     <li className={row.isChild && !compact ? "ml-2 border-l border-cardBorder/80 pl-3" : ""}>
@@ -81,7 +79,7 @@ function BudgetRow({
           </p>
           {hasLimit && (
             <p className="text-[11px] tabular-nums text-zinc-500">
-              of {compact ? formatCompactCurrency(row.allocated) : formatCurrency(row.allocated)}
+              of {formatCurrency(row.allocated)}
             </p>
           )}
         </div>
