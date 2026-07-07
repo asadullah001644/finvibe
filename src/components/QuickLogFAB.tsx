@@ -296,7 +296,7 @@ export default function QuickLogFAB({
                         placeholder="0"
                         value={amount}
                         onChange={handleAmountChange}
-                        className={`no-number-spinner ${fieldInputClass} font-semibold tabular-nums`}
+                        className={`${fieldInputClass} font-semibold tabular-nums`}
                       />
                     </div>
                   </label>
