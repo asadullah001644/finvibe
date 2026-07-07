@@ -2,7 +2,8 @@
 
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
-import { Filter, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { Filter, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import ManageCategoriesModal from "@/components/ManageCategoriesModal";
 import {
   categorySectionLabelClass,
   CategoryPickerPanel,
@@ -522,6 +523,7 @@ export default function CategoryExplorer({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [isApplyingFilters, setIsApplyingFilters] = useState(false);
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
   const [mobileSection, setMobileSection] = useState<"categories" | "expenses">(
     "categories",
   );
@@ -624,6 +626,14 @@ export default function CategoryExplorer({
 
   return (
     <div className="space-y-4 lg:space-y-6">
+      {isSuperAdmin && (
+        <ManageCategoriesModal
+          isOpen={manageCategoriesOpen}
+          onClose={() => setManageCategoriesOpen(false)}
+          customCategories={customCategories}
+        />
+      )}
+
       <header className="rounded-2xl border border-cardBorder bg-card/60 px-4 py-4 sm:px-5">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">
           This month
@@ -685,18 +695,30 @@ export default function CategoryExplorer({
             mobileSection === "expenses" ? "hidden lg:block" : ""
           }`}
         >
-          <h2 className="mb-1 text-base font-semibold text-zinc-100">
-            By category
-          </h2>
-          <p className="mb-4 text-sm text-zinc-500">
-            Tap a category to see its expenses
-          </p>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-zinc-100">
+                By category
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Tap a category to see its expenses
+              </p>
+            </div>
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => setManageCategoriesOpen(true)}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-neonViolet/40 bg-neonViolet/15 px-3 py-2 text-xs font-semibold text-neonViolet transition-colors hover:bg-neonViolet/25 sm:text-sm"
+              >
+                <Plus className="h-4 w-4" />
+                Add category
+              </button>
+            )}
+          </div>
           <CategoryBudgetPanel
             categories={categories}
             expenses={expenses}
             activeCategoryNames={activeCategoryNames}
-            customCategories={customCategories}
-            isSuperAdmin={isSuperAdmin}
             onSelectCategory={handleSelectCategory}
             compact
           />

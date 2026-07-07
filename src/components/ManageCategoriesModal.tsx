@@ -173,19 +173,84 @@ export default function ManageCategoriesModal({
                 id="manage-category-title"
                 className="text-lg font-semibold tracking-tight text-zinc-100 lg:text-xl"
               >
-                Manage categories
+                {editingId ? "Edit category" : "Add category"}
               </h2>
               <p className="mt-1 text-sm text-zinc-500">
-                Shared with all users · super admin only
+                Custom categories are shared with all users. Built-in categories
+                (Food, Transport, etc.) cannot be removed.
               </p>
             </ModalHeader>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 lg:px-6">
+              <div className="mb-6">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Your custom categories
+                </p>
+                {customCategories.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-cardBorder bg-background/40 px-4 py-5 text-center text-sm text-zinc-500">
+                    No custom categories yet. Add one below — it will appear here
+                    with Edit and Delete options.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {customCategories.map((category) => (
+                      <li
+                        key={category.id}
+                        className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 ${
+                          editingId === category.id
+                            ? "border-neonViolet/40 bg-neonViolet/10"
+                            : "border-cardBorder/70 bg-background/40"
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-zinc-200">
+                            {category.fullName}
+                          </p>
+                          {category.groupLabel && (
+                            <p className="text-xs text-zinc-600">
+                              Group · {category.groupLabel}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(category)}
+                            disabled={isSubmitting || deletingId !== null}
+                            className="inline-flex items-center gap-1 rounded-lg border border-cardBorder px-2.5 py-1.5 text-xs text-zinc-500 transition-colors hover:border-neonViolet/30 hover:text-neonViolet disabled:opacity-60"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(category.id)}
+                            disabled={deletingId === category.id || isSubmitting}
+                            className="inline-flex items-center gap-1 rounded-lg border border-neonCrimson/30 px-2.5 py-1.5 text-xs text-neonCrimson/90 transition-colors hover:bg-neonCrimson/10 disabled:opacity-60"
+                          >
+                            {deletingId === category.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                            Delete
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               <form
                 id="manage-category-form"
                 onSubmit={handleSubmit}
-                className="space-y-4"
+                className="space-y-4 border-t border-cardBorder/70 pt-5"
               >
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  {editingId ? "Update details" : "New category"}
+                </p>
+
                 <div>
                   <label htmlFor="category-group" className={fieldLabelClass}>
                     Group (optional)
@@ -246,61 +311,6 @@ export default function ManageCategoriesModal({
                   </p>
                 )}
               </form>
-
-              {customCategories.length > 0 && (
-                <div className="mt-6 border-t border-cardBorder/70 pt-5">
-                  <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                    Added categories
-                  </p>
-                  <ul className="space-y-2">
-                    {customCategories.map((category) => (
-                      <li
-                        key={category.id}
-                        className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 ${
-                          editingId === category.id
-                            ? "border-neonViolet/40 bg-neonViolet/10"
-                            : "border-cardBorder/70 bg-background/40"
-                        }`}
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-zinc-200">
-                            {category.fullName}
-                          </p>
-                          {category.groupLabel && (
-                            <p className="text-xs text-zinc-600">
-                              Group · {category.groupLabel}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => startEdit(category)}
-                            disabled={isSubmitting || deletingId !== null}
-                            className="inline-flex items-center gap-1 rounded-lg border border-cardBorder px-2.5 py-1.5 text-xs text-zinc-500 transition-colors hover:border-neonViolet/30 hover:text-neonViolet disabled:opacity-60"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(category.id)}
-                            disabled={deletingId === category.id || isSubmitting}
-                            className="inline-flex items-center gap-1 rounded-lg border border-cardBorder px-2.5 py-1.5 text-xs text-zinc-500 transition-colors hover:border-neonCrimson/30 hover:text-neonCrimson disabled:opacity-60"
-                          >
-                            {deletingId === category.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-3.5 w-3.5" />
-                            )}
-                            Delete
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
 
             <ModalFooter>

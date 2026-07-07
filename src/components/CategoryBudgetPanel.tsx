@@ -1,13 +1,11 @@
 "use client";
 
-import { ChevronDown, Settings2 } from "lucide-react";
-import ManageCategoriesModal from "@/components/ManageCategoriesModal";
+import { ChevronDown } from "lucide-react";
 import CategoryLimitStatusIcon, {
   limitStatusLabels,
 } from "@/components/CategoryLimitStatusIcon";
 import {
   buildGroupedCategoryRows,
-  countActiveCategories,
   filterCategoryGroups,
   getCategoryLimitStatus,
   type CategoryExpense,
@@ -16,15 +14,12 @@ import {
 } from "@/lib/categorySpend";
 import { formatCompactCurrency, formatCurrency } from "@/lib/currency";
 import type { BudgetCategory } from "@/lib/types";
-import type { CustomCategoryRecord } from "@/lib/customCategories";
 import { useEffect, useState } from "react";
 
 interface CategoryBudgetPanelProps {
   categories: BudgetCategory[];
   expenses: CategoryExpense[];
   activeCategoryNames: string[];
-  customCategories: CustomCategoryRecord[];
-  isSuperAdmin: boolean;
   onSelectCategory: (categoryName: string) => void;
   compact?: boolean;
 }
@@ -178,50 +173,16 @@ export default function CategoryBudgetPanel({
   categories,
   expenses,
   activeCategoryNames,
-  customCategories,
-  isSuperAdmin,
   onSelectCategory,
   compact = false,
 }: CategoryBudgetPanelProps) {
-  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
   const { groups, totalSpent } = buildGroupedCategoryRows(categories, expenses);
   const visibleGroups = filterCategoryGroups(groups, totalSpent, {
     showEmptyBudgets: false,
   });
-  const activeCount = countActiveCategories(visibleGroups);
 
   return (
     <>
-      {isSuperAdmin && (
-        <ManageCategoriesModal
-          isOpen={manageCategoriesOpen}
-          onClose={() => setManageCategoriesOpen(false)}
-          customCategories={customCategories}
-        />
-      )}
-
-      {(isSuperAdmin || !compact) && (
-        <div
-          className={`flex items-center gap-3 ${compact ? "mb-2 justify-end" : "mb-3 justify-between"}`}
-        >
-          {!compact && (
-            <p className="text-sm text-zinc-500">
-              {activeCount} active categor{activeCount === 1 ? "y" : "ies"}
-            </p>
-          )}
-          {isSuperAdmin && (
-          <button
-            type="button"
-            onClick={() => setManageCategoriesOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-neonViolet/25 bg-neonViolet/10 px-2.5 py-1.5 text-xs font-medium text-neonViolet transition-colors hover:bg-neonViolet/20"
-          >
-            <Settings2 className="h-3.5 w-3.5" />
-            Manage
-          </button>
-        )}
-        </div>
-      )}
-
       {visibleGroups.length === 0 ? (
         <p className="rounded-xl border border-dashed border-cardBorder bg-background/40 px-4 py-8 text-center text-sm text-zinc-500">
           No spending by category yet this month.
